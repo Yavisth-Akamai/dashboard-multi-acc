@@ -9,10 +9,8 @@ export class ApprovedRegionRepository extends Repository<ApprovedRegionEntity> {
   }
 
   async bulkUpsert(regions: Partial<ApprovedRegionEntity>[]): Promise<ApprovedRegionEntity[]> {
-    // Clear existing entries for the team
     await this.createQueryBuilder()
       .delete()
-      .where('team = :team', { team: 'x-dev-team-az' })
       .execute();
 
     // Save new entries

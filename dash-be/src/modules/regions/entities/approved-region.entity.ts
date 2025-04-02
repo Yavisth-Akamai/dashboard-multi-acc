@@ -6,9 +6,6 @@ export class ApprovedRegionEntity {
   id: number;
 
   @Column({ type: 'varchar', length: 100 })
-  team: string;
-
-  @Column({ type: 'varchar', length: 100 })
   region: string;
 
   @Column({ type: 'varchar', length: 50 })

@@ -1,52 +1,49 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import { Redis } from 'ioredis';
-import { SheetsService } from './sheets.service';
 import { ApprovedRegionRepository } from '../repositories/approved-region.repository';
 import { ApprovedRegionEntity } from '../entities/approved-region.entity';
+import { ExcelService } from './excel.service';
 
 @Injectable()
 export class RegionsService {
   constructor(
-    private readonly sheetsService: SheetsService,
-    @InjectRepository(ApprovedRegionRepository)
+    private readonly excelService: ExcelService,
     private readonly approvedRegionRepository: ApprovedRegionRepository,
-    @Inject('REDIS_CLIENT')
-    private readonly redisClient: Redis
+    @Inject('REDIS_CLIENT') private readonly redisClient: Redis
   ) {}
 
+  // Sync regions from Excel to database and cache
   async syncApprovedRegions(): Promise<ApprovedRegionEntity[]> {
-    const regions = await this.sheetsService.getApprovedRegions();
+    const regions = await this.excelService.getApprovedRegions();
     const savedRegions = await this.approvedRegionRepository.bulkUpsert(regions);
     await this.cacheRegions(savedRegions);
     return savedRegions;
   }
 
+  // Cache regions in Redis
   private async cacheRegions(regions: ApprovedRegionEntity[]): Promise<void> {
     const cacheData = regions.map(region => ({
       region: region.region,
       region_slug: region.region_slug,
       approved_capacity: region.approved_capacity
     }));
-
+    
     await this.redisClient.set(
-      'approved_regions', 
-      JSON.stringify(cacheData), 
-      'EX', 
-      3600 // 1 hour
+      'approved_regions',
+      JSON.stringify(cacheData),
+      'EX',
+      3600  // 1 hour expiration
     );
   }
 
+  // Get regions (from cache if available, otherwise from database)
   async getApprovedRegions(): Promise<ApprovedRegionEntity[]> {
-    const cachedRegions = await this.redisClient.get('approved_regions');
-    if (cachedRegions) {
-      return JSON.parse(cachedRegions);
+    const cached = await this.redisClient.get('approved_regions');
+    if (cached) {
+      return JSON.parse(cached);
     }
 
-    const regions = await this.approvedRegionRepository.find({
-      where: { team: 'x-dev-team-az' }
-    });
-
+    const regions = await this.approvedRegionRepository.find();
     await this.cacheRegions(regions);
     return regions;
   }
