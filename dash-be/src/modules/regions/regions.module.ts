@@ -1,4 +1,3 @@
-// src/modules/regions/regions.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { HttpModule } from '@nestjs/axios';
@@ -7,6 +6,7 @@ import { ApprovedRegionRepository } from './repositories/approved-region.reposit
 import { RegionsService } from './services/regions.service';
 import { ExcelService } from './services/excel.service';
 import { LinodeClustersService } from './services/linode-clusters.service';
+import { ClusterMetricsService } from './services/cluster-metrics.service';
 import { RegionsController } from './controllers/regions.controller';
 import { RedisModule } from '../../redis/redis.module';
 
@@ -21,6 +21,7 @@ import { RedisModule } from '../../redis/redis.module';
     RegionsService,
     ExcelService,
     LinodeClustersService,
+    ClusterMetricsService,
     ApprovedRegionRepository,
   ],
   exports: [RegionsService],

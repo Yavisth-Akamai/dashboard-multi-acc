@@ -13,7 +13,6 @@ export class ExcelService {
 
     const data: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
     
-    // Count regions from right column (index 1)
     const regionCounts: Record<string, number> = {};
     data.forEach((row) => {
       if (row[1] && typeof row[1] === 'string') {
@@ -22,7 +21,6 @@ export class ExcelService {
       }
     });
 
-    // Convert to RegionCapacity objects
     return Object.entries(regionCounts).map(([region, count]) => ({
       region,
       approved_capacity: count

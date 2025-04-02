@@ -41,7 +41,7 @@ export const REGION_MAPPING = {
     'Sydney, AU': 'ap-southeast'
   };
   
-  // Reverse mapping for easy lookup
+
   export const SLUG_TO_REGION = Object.fromEntries(
     Object.entries(REGION_MAPPING).map(([key, value]) => [value, key])
   );

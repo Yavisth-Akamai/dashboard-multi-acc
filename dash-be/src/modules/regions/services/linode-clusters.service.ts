@@ -10,12 +10,12 @@ export class LinodeClustersService {
 
   constructor(private readonly httpService: HttpService) {}
 
-  // Helper method to convert full region name to simple name
+
   private simplifyRegionName(fullName: string): string {
-    // Extract the first part before comma or any special characters
+
     const match = fullName.match(/^([^,]+)/);
     if (match) {
-      // Replace spaces with underscores for cases like "Washington D.C."
+
       return match[1].trim().replace(/\s+/g, '_');
     }
     return fullName;
