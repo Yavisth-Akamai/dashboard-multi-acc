@@ -24,7 +24,7 @@ export class RegionsService {
   private async cacheRegions(regions: ApprovedRegionEntity[]): Promise<void> {
     const cacheData = regions.map(region => ({
       region: region.region,
-      region_slug: region.region_slug,
+    //   region_slug: region.region_slug,
       approved_capacity: region.approved_capacity
     }));
     

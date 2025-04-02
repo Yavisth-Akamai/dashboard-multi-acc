@@ -5,12 +5,12 @@ import { RegionsService } from '../services/regions.service';
 export class RegionsController {
   constructor(private readonly regionsService: RegionsService) {}
 
-  @Post('sync')
+  @Post('sync')  // Endpoint: POST /regions/sync
   async syncApprovedRegions() {
     return this.regionsService.syncApprovedRegions();
   }
 
-  @Get('approved')
+  @Get('approved')  // Endpoint: GET /regions/approved
   async getApprovedRegions() {
     return this.regionsService.getApprovedRegions();
   }

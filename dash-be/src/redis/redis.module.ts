@@ -7,12 +7,12 @@ import Redis from 'ioredis';
       provide: 'REDIS_CLIENT',
       useFactory: () => {
         return new Redis({
-          host: 'localhost', 
-          port: 6379,    
+          host: 'localhost',
+          port: 6379,
         });
-      }
-    }
+      },
+    },
   ],
-  exports: ['REDIS_CLIENT']
+  exports: ['REDIS_CLIENT'],
 })
 export class RedisModule {}

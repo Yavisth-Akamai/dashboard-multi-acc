@@ -8,8 +8,8 @@ export class ApprovedRegionEntity {
   @Column({ type: 'varchar', length: 100 })
   region: string;
 
-  @Column({ type: 'varchar', length: 50 })
-  region_slug: string;
+//   @Column({ type: 'varchar', length: 50 })
+//   region_slug: string;
 
   @Column({ type: 'integer' })
   approved_capacity: number;
