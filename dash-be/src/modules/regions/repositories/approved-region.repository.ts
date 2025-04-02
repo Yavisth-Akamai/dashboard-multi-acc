@@ -9,11 +9,7 @@ export class ApprovedRegionRepository extends Repository<ApprovedRegionEntity> {
   }
 
   async bulkUpsert(regions: Partial<ApprovedRegionEntity>[]): Promise<ApprovedRegionEntity[]> {
-    await this.createQueryBuilder()
-      .delete()
-      .execute();
-
-    // Save new entries
+    await this.createQueryBuilder().delete().execute();
     return this.save(regions);
   }
 }
