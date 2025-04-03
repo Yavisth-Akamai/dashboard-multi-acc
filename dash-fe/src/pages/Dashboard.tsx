@@ -12,41 +12,49 @@ const Dashboard: React.FC = () => {
   const [clusterMetrics, setClusterMetrics] = useState<ClusterMetric[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
+
+
 useEffect(() => {
     const fetchData = async () => {
       try {
-        // Log before fetching
-        console.log('Fetching data...');
-        
         const [compData, metricsData] = await Promise.all([
           fetchApprovedComparison(),
           fetchClusterMetrics()
         ]);
 
-        // Log the received data
-        console.log('Comparison Data:', compData);
-        console.log('Metrics Data:', metricsData);
-
         setApprovedRegions(compData);
         setClusterMetrics(metricsData);
 
-        // Calculate unapproved regions
-        const approvedSet = new Set(compData.map((reg: ApprovedRegion) => reg.region));
+        // Helper function to normalize region names
+        const normalizeRegionName = (region: string): string => {
+          return region.split(',')[0].trim(); // Takes "Mumbai, IN" -> "Mumbai"
+        };
+
+        // Create a map of approved regions and their capacities
+        const approvedCapacities = compData.reduce((acc: Record<string, number>, region: ApprovedRegion) => {
+          acc[region.region] = region.total_capacity;
+          return acc;
+        }, {} as Record<string, number>);
+
+        // Count clusters per normalized region
         const regionCounts: Record<string, number> = {};
-        
         metricsData.forEach((cluster: ClusterMetric) => {
-          if (!approvedSet.has(cluster.region)) {
-            regionCounts[cluster.region] = (regionCounts[cluster.region] || 0) + 1;
-          }
+          const normalizedRegion = normalizeRegionName(cluster.region);
+          regionCounts[normalizedRegion] = (regionCounts[normalizedRegion] || 0) + 1;
         });
 
-        const unapprovedData = Object.entries(regionCounts).map(
-          ([region, capacity]) => ({ region, capacity })
-        );
+        // Calculate unapproved (excess) capacity
+        const unapprovedData = Object.entries(regionCounts)
+          .map(([region, count]) => {
+            const approvedCapacity = approvedCapacities[region] || 0;
+            const excessCapacity = count - approvedCapacity;
+            return {
+              region,
+              capacity: excessCapacity
+            };
+          })
+          .filter(item => item.capacity > 0);
 
-        // Log calculated unapproved regions
-        console.log('Unapproved Regions:', unapprovedData);
-        
         setUnapprovedRegions(unapprovedData);
       } catch (error) {
         console.error('Error fetching data:', error);
