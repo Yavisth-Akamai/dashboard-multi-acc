@@ -1,4 +1,7 @@
 import axios from 'axios';
+import { Account, AccountUnapprovedRegions, ComparisonData, ClusterMetricResponse } from '../types/account.types';
+
+
 
 const API_BASE_URL = 'http://localhost:3000';
 
@@ -11,10 +14,19 @@ export const apiClient = axios.create({
   }
 });
 
-export const fetchApprovedComparison = async () => {
+export const fetchAccounts = async (): Promise<Account[]> => {
+  try {
+    const response = await apiClient.get('/accounts');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching accounts:', error);
+    return [];
+  }
+};
+
+export const fetchApprovedComparison = async (): Promise<ComparisonData[]> => {
   try {
     const response = await apiClient.get('/regions/comparison');
-    console.log('Approved Comparison Response:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error fetching approved comparison:', error);
@@ -22,10 +34,19 @@ export const fetchApprovedComparison = async () => {
   }
 };
 
-export const fetchClusterMetrics = async () => {
+export const fetchUnapprovedRegions = async (): Promise<AccountUnapprovedRegions[]> => {
+  try {
+    const response = await apiClient.get('/regions/unapproved');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching unapproved regions:', error);
+    return [];
+  }
+};
+
+export const fetchClusterMetrics = async (): Promise<ClusterMetricResponse[]> => {
   try {
     const response = await apiClient.get('/regions/metrics');
-    console.log('Cluster Metrics Response:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error fetching cluster metrics:', error);

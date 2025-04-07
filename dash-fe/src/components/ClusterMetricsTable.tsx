@@ -29,14 +29,20 @@ const ClusterMetricsTable: React.FC<ClusterMetricsTableProps> = ({ data }) => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {data.map((row, index) => (
-            <TableRow key={index}>
-              <TableCell>{row.name}</TableCell>
-              <TableCell>{row.region}</TableCell>
-              <TableCell>{row.status}</TableCell>
-              <TableCell>{new Date(row.created).toLocaleString()}</TableCell>
+          {data && data.length > 0 ? (
+            data.map((row, index) => (
+              <TableRow key={index}>
+                <TableCell>{row.name}</TableCell>
+                <TableCell>{row.region}</TableCell>
+                <TableCell>{row.status}</TableCell>
+                <TableCell>{new Date(row.created).toLocaleString()}</TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={4} align="center">No clusters found</TableCell>
             </TableRow>
-          ))}
+          )}
         </TableBody>
       </Table>
     </TableContainer>

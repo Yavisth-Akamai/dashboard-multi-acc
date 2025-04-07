@@ -14,6 +14,8 @@ interface UnapprovedRegionsTableProps {
 }
 
 const UnapprovedRegionsTable: React.FC<UnapprovedRegionsTableProps> = ({ data }) => {
+  console.log('UnapprovedRegionsTable received data:', data);
+  
   return (
     <TableContainer component={Paper} sx={{ marginBottom: 2 }}>
       <Typography variant="h6" sx={{ padding: 1 }}>Unapproved Regions</Typography>
@@ -25,12 +27,18 @@ const UnapprovedRegionsTable: React.FC<UnapprovedRegionsTableProps> = ({ data })
           </TableRow>
         </TableHead>
         <TableBody>
-          {data.map((row, index) => (
-            <TableRow key={index}>
-              <TableCell>{row.region}</TableCell>
-              <TableCell align="right">{row.capacity}</TableCell>
+          {data && data.length > 0 ? (
+            data.map((row, index) => (
+              <TableRow key={index}>
+                <TableCell>{row.region}</TableCell>
+                <TableCell align="right">{row.capacity}</TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={2} align="center">No unapproved regions found</TableCell>
             </TableRow>
-          ))}
+          )}
         </TableBody>
       </Table>
     </TableContainer>

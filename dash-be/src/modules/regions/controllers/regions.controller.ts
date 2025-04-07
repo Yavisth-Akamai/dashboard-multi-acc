@@ -1,6 +1,7 @@
 import { Controller, Get, Post } from '@nestjs/common';
 import { RegionsService } from '../services/regions.service';
 import { ClusterMetricsService } from '../services/cluster-metrics.service';
+import { AccountUnapprovedRegions } from '../../../common/interfaces/region.interface';
 
 @Controller('regions')
 export class RegionsController {
@@ -27,5 +28,10 @@ export class RegionsController {
   @Get('metrics')
   async getClusterMetrics() {
     return this.clusterMetricsService.getClusterMetrics();
+  }
+  
+  @Get('unapproved')
+  async getUnapprovedRegions(): Promise<AccountUnapprovedRegions[]> {
+    return this.regionsService.getUnapprovedRegions();
   }
 }

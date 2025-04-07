@@ -17,10 +17,16 @@ interface AccountExpandableTableProps {
 }
 
 const AccountExpandableTable: React.FC<AccountExpandableTableProps> = ({ accounts }) => {
+  console.log('AccountExpandableTable received accounts:', accounts);
+  
   return (
     <div>
-      {accounts.map((account) => (
-        <Accordion key={account.name} sx={{ mb: 1 }}>
+      {accounts.map((account) => {
+        console.log(`Rendering account ${account.name}:`, account);
+        console.log('Unapproved regions for this account:', account.unapprovedRegions);
+        
+        return (
+          <Accordion key={account.name} sx={{ mb: 1 }}>
           <AccordionSummary
             expandIcon={<ExpandMoreIcon />}
             sx={{
@@ -47,12 +53,13 @@ const AccountExpandableTable: React.FC<AccountExpandableTableProps> = ({ account
             </Box>
           </AccordionSummary>
           <AccordionDetails>
-            <ApprovedRegionsTable data={account.approvedRegions} />
-            <UnapprovedRegionsTable data={account.unapprovedRegions} />
-            <ClusterMetricsTable data={account.clusterMetrics} />
-          </AccordionDetails>
-        </Accordion>
-      ))}
+              <ApprovedRegionsTable data={account.approvedRegions} />
+              <UnapprovedRegionsTable data={account.unapprovedRegions} />
+              <ClusterMetricsTable data={account.clusterMetrics} />
+            </AccordionDetails>
+          </Accordion>
+        );
+      })}
     </div>
   );
 };

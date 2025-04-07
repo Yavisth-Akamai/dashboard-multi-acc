@@ -4,6 +4,15 @@ import { ApprovedRegionRepository } from '../repositories/approved-region.reposi
 import { ApprovedRegionEntity } from '../entities/approved-region.entity';
 import { ExcelService } from './excel.service';
 import { LinodeClustersService } from './linode-clusters.service';
+import { ClusterMetricsService } from './cluster-metrics.service';
+import { ClusterMetricResponse, ClusterMetric } from '../../../common/interfaces/region.interface';
+
+// Add interfaces for type safety
+import { 
+  ApprovedRegion, 
+  UnapprovedRegion, 
+  AccountUnapprovedRegions,
+} from '../../../common/interfaces/region.interface';
 
 @Injectable()
 export class RegionsService {
@@ -11,6 +20,7 @@ export class RegionsService {
     private readonly excelService: ExcelService,
     private readonly approvedRegionRepository: ApprovedRegionRepository,
     private readonly linodeClustersService: LinodeClustersService,
+    private readonly clusterMetricsService: ClusterMetricsService,
     @Inject('REDIS_CLIENT') private readonly redisClient: Redis
   ) {}
 
@@ -64,5 +74,78 @@ export class RegionsService {
     if (current > approved) return 'EXCEEDED';
     if (current === approved) return 'AT_CAPACITY';
     return 'WITHIN_LIMIT';
+  }
+
+  async getUnapprovedRegions(): Promise<AccountUnapprovedRegions[]> {
+    try {
+      const [approvedRegions, metricsResponse] = await Promise.all([
+        this.getApprovedRegions(),
+        this.clusterMetricsService.getClusterMetrics()
+      ]);
+
+      // Transform the metrics response into account-grouped clusters
+      const accountMetrics = this.groupMetricsByAccount(metricsResponse);
+
+      // Calculate unapproved regions for each account
+      const unapprovedByAccount = Object.entries(accountMetrics).map(([accountName, metrics]) => {
+        const unapprovedRegions = this.calculateUnapprovedRegions(
+          approvedRegions,
+          metrics
+        );
+
+        return {
+          accountName,
+          unapprovedRegions
+        };
+      });
+
+      return unapprovedByAccount;
+    } catch (error) {
+      console.error('Error calculating unapproved regions:', error);
+      throw error;
+    }
+  }
+
+  private groupMetricsByAccount(metricsResponse: ClusterMetricResponse[]): Record<string, ClusterMetric[]> {
+    return metricsResponse.reduce((acc: Record<string, ClusterMetric[]>, response) => {
+      acc[response.accountName] = response.clusters;
+      return acc;
+    }, {});
+  }
+
+
+  private calculateUnapprovedRegions(
+    approvedRegions: ApprovedRegionEntity[],
+    metrics: ClusterMetric[]
+  ): UnapprovedRegion[] {
+    // Helper function to normalize region names
+    const normalizeRegionName = (region: string): string => {
+      return region.split(',')[0].trim();
+    };
+
+    // Create a map of approved regions and their capacities
+    const approvedCapacities = approvedRegions.reduce((acc: Record<string, number>, region) => {
+      acc[region.region] = region.approved_capacity;
+      return acc;
+    }, {});
+
+    // Count clusters per normalized region
+    const regionCounts = metrics.reduce((acc: Record<string, number>, cluster) => {
+      const normalizedRegion = normalizeRegionName(cluster.region);
+      acc[normalizedRegion] = (acc[normalizedRegion] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Calculate unapproved (excess) capacity
+    return Object.entries(regionCounts)
+      .map(([region, count]): UnapprovedRegion => {
+        const approvedCapacity = approvedCapacities[region] || 0;
+        const excessCapacity = count - approvedCapacity;
+        return {
+          region,
+          capacity: excessCapacity
+        };
+      })
+      .filter(item => item.capacity > 0);
   }
 }

@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne } from 'typeorm';
+import { AccountEntity } from '../../accounts/entities/account.entity';
 
 @Entity('approved_regions')
 export class ApprovedRegionEntity {
@@ -13,4 +14,10 @@ export class ApprovedRegionEntity {
 
   @CreateDateColumn()
   created_at: Date;
+
+  @ManyToOne(() => AccountEntity)
+  account: AccountEntity;
+
+  // @Column()
+  // accountId: number;
 }

@@ -1,113 +1,10 @@
-// import React, { useEffect, useState } from 'react';
-// import { Container, Typography, CircularProgress } from '@mui/material';
-// import Grid from '@mui/material/Grid'; // Use stable Grid component
-// import ApprovedRegionsTable, { ApprovedRegion } from '../components/ApprovedRegionsTable';
-// import UnapprovedRegionsTable, { UnapprovedRegion } from '../components/UnapprovedRegionsTable';
-// import ClusterMetricsTable, { ClusterMetric } from '../components/ClusterMetricsTable';
-// import { fetchApprovedComparison, fetchClusterMetrics } from '../services/api';
-
-// const Dashboard: React.FC = () => {
-//   const [approvedRegions, setApprovedRegions] = useState<ApprovedRegion[]>([]);
-//   const [unapprovedRegions, setUnapprovedRegions] = useState<UnapprovedRegion[]>([]);
-//   const [clusterMetrics, setClusterMetrics] = useState<ClusterMetric[]>([]);
-//   const [loading, setLoading] = useState<boolean>(true);
-
-
-
-// useEffect(() => {
-//     const fetchData = async () => {
-//       try {
-//         const [compData, metricsData] = await Promise.all([
-//           fetchApprovedComparison(),
-//           fetchClusterMetrics()
-//         ]);
-
-//         setApprovedRegions(compData);
-//         setClusterMetrics(metricsData);
-
-//         // Helper function to normalize region names
-//         const normalizeRegionName = (region: string): string => {
-//           return region.split(',')[0].trim(); // Takes "Mumbai, IN" -> "Mumbai"
-//         };
-
-//         // Create a map of approved regions and their capacities
-//         const approvedCapacities = compData.reduce((acc: Record<string, number>, region: ApprovedRegion) => {
-//           acc[region.region] = region.total_capacity;
-//           return acc;
-//         }, {} as Record<string, number>);
-
-//         // Count clusters per normalized region
-//         const regionCounts: Record<string, number> = {};
-//         metricsData.forEach((cluster: ClusterMetric) => {
-//           const normalizedRegion = normalizeRegionName(cluster.region);
-//           regionCounts[normalizedRegion] = (regionCounts[normalizedRegion] || 0) + 1;
-//         });
-
-//         // Calculate unapproved (excess) capacity
-//         const unapprovedData = Object.entries(regionCounts)
-//           .map(([region, count]) => {
-//             const approvedCapacity = approvedCapacities[region] || 0;
-//             const excessCapacity = count - approvedCapacity;
-//             return {
-//               region,
-//               capacity: excessCapacity
-//             };
-//           })
-//           .filter(item => item.capacity > 0);
-
-//         setUnapprovedRegions(unapprovedData);
-//       } catch (error) {
-//         console.error('Error fetching data:', error);
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
-
-//     fetchData();
-//   }, []);
-
-//   if (loading) {
-//     return (
-//       <Container
-//         sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
-//       >
-//         <CircularProgress />
-//       </Container>
-//     );
-//   }
-
-//   return (
-//     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-//       <Typography variant="h4" gutterBottom>
-//         Linode Regions Dashboard
-//       </Typography>
-//       <Grid container spacing={3}>
-//         <Grid size={12}>
-//           <ApprovedRegionsTable data={approvedRegions} />
-//         </Grid>
-//         <Grid size={12}>
-//           <UnapprovedRegionsTable data={unapprovedRegions} />
-//         </Grid>
-//         <Grid size={12}>
-//           <ClusterMetricsTable data={clusterMetrics} />
-//         </Grid>
-//       </Grid>
-//     </Container>
-//   );
-// };
-
-// export default Dashboard;
 
 import React, { useEffect, useState } from 'react';
-import { Container, Typography, CircularProgress, Box } from '@mui/material';
-import Grid from '@mui/material/Grid';
-import ApprovedRegionsTable, { ApprovedRegion } from '../components/ApprovedRegionsTable';
-import UnapprovedRegionsTable, { UnapprovedRegion } from '../components/UnapprovedRegionsTable';
-import ClusterMetricsTable, { ClusterMetric } from '../components/ClusterMetricsTable';
+import { Container, Typography, Box } from '@mui/material';
 import SearchFilterWindow from '../components/SearchFilterWindow';
 import AccountExpandableTable from '../components/AccountExpandableTable';
-import { fetchApprovedComparison, fetchClusterMetrics } from '../services/api';
-import { AccountData, ComparisonData } from '../types/account.types';
+import { fetchApprovedComparison, fetchClusterMetrics, fetchUnapprovedRegions, fetchAccounts } from '../services/api';
+import { AccountData, ComparisonData, Account, AccountUnapprovedRegions } from '../types/account.types';
 
 interface DashboardProps {
   darkMode: boolean;
@@ -115,50 +12,63 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ darkMode, onDarkModeChange }) => {
-  const [approvedRegions, setApprovedRegions] = useState<ApprovedRegion[]>([]);
-  const [unapprovedRegions, setUnapprovedRegions] = useState<UnapprovedRegion[]>([]);
-  const [clusterMetrics, setClusterMetrics] = useState<ClusterMetric[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
-  const [accounts] = useState<string[]>(['Account One', 'Account Two']);
+  const [accounts, setAccounts] = useState<string[]>([]);
   const [accountsData, setAccountsData] = useState<AccountData[]>([]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [compData, metricsData] = await Promise.all([
-          fetchApprovedComparison(),
-          fetchClusterMetrics()
-        ]);
+// src/pages/Dashboard.tsx
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      // First fetch accounts
+      const accountsData = await fetchAccounts();
+      const accountNames = (accountsData as Account[]).map((account: Account) => account.name);
+      setAccounts(accountNames);
+      
+      const [compData, metricsData, unapprovedData] = await Promise.all([
+        fetchApprovedComparison(),
+        fetchClusterMetrics(),
+        fetchUnapprovedRegions()
+      ]);
 
-        // Process data for accounts
-        const processedAccounts = accounts.map(accountName => {
-          // Calculate total capacity from comparison data
-          const totalCapacity = compData.reduce((sum: number, r: ComparisonData) => 
-            sum + r.total_capacity, 0);
+      // Process data for accounts
+      const processedAccounts = accountNames.map((accountName: string) => {
+        // Find unapproved regions for this account
+        const accountUnapproved = (unapprovedData as AccountUnapprovedRegions[])
+          .find(data => data.accountName === accountName)
+          ?.unapprovedRegions || [];
 
-          return {
-            name: accountName,
-            ha: true,
-            totalCapacity,
-            created: new Date().toISOString(),
-            approvedRegions: compData,
-            unapprovedRegions: [], // Empty array for now
-            clusterMetrics: metricsData
-          };
-        });
+        // Find cluster metrics for this account
+        const accountMetrics = metricsData.find(
+          data => data.accountName === accountName
+        )?.clusters || [];
 
-        setAccountsData(processedAccounts);
-        setSelectedAccounts(accounts);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+        const totalCapacity = compData.reduce((sum: number, r: ComparisonData) => 
+          sum + r.total_capacity, 0);
 
-    fetchData();
-  }, [accounts]);
+        return {
+          name: accountName,
+          ha: true,
+          totalCapacity,
+          created: new Date().toISOString(),
+          approvedRegions: compData,
+          unapprovedRegions: accountUnapproved,
+          clusterMetrics: accountMetrics  // Now using account-specific clusters
+        };
+      });
+
+      setAccountsData(processedAccounts);
+      setSelectedAccounts(accountNames);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchData();
+}, []);
 
   return (
     <Box sx={{ pt: 3 }}>
@@ -191,5 +101,7 @@ const Dashboard: React.FC<DashboardProps> = ({ darkMode, onDarkModeChange }) => 
     </Box>
   );
 };
+
+
 
 export default Dashboard;

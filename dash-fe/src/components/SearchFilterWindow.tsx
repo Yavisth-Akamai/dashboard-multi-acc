@@ -63,7 +63,7 @@ const SearchFilterWindow: React.FC<SearchFilterWindowProps> = ({
       <Box
         sx={{
           position: 'absolute',
-          right: 48, // Adjusted to make room for expand/collapse toggle
+          right: 48,
           top: 8,
           display: 'flex',
           alignItems: 'center',

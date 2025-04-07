@@ -13,11 +13,6 @@ export interface ApprovedRegion {
     created: string;
   }
   
-  export interface UnapprovedRegion {
-    region: string;
-    capacity: number;
-  }
-  
   export interface AccountData {
     name: string;
     ha: boolean;
@@ -35,3 +30,33 @@ export interface ApprovedRegion {
     available: number;
     status: 'EXCEEDED' | 'AT_CAPACITY' | 'WITHIN_LIMIT';
   }
+
+  export interface UnapprovedRegion {
+    region: string;
+    capacity: number;
+  }
+  
+  export interface AccountUnapprovedRegions {
+    accountName: string;
+    unapprovedRegions: UnapprovedRegion[];
+  }
+
+  export interface Account {
+    id: number;
+    name: string;
+    token: string;
+    isActive: boolean;
+    created_at: string;
+  }
+
+export interface ClusterMetric {
+  name: string;
+  region: string;
+  status: string;
+  created: string;
+}
+
+export interface ClusterMetricResponse {
+  accountName: string;
+  clusters: ClusterMetric[];
+}
