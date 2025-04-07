@@ -20,10 +20,11 @@ export class RegionsController {
     return this.regionsService.getApprovedRegions();
   }
 
-  @Get('comparison')
-  async getRegionComparison() {
-    return this.regionsService.getRegionComparison();
-  }
+  // regions.controller.ts
+@Get('comparison')
+async getRegionComparison() {
+  return this.regionsService.getRegionComparison();
+}
   
   @Get('metrics')
   async getClusterMetrics() {

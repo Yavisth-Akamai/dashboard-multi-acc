@@ -51,25 +51,47 @@ export class RegionsService {
   }
 
   async getRegionComparison() {
-    const [approvedRegions, clusterRegions] = await Promise.all([
+    const [approvedRegions, clusterRegionsByAccount] = await Promise.all([
       this.getApprovedRegions(),
       this.linodeClustersService.getClusterRegions()
     ]);
-
-    return approvedRegions.map(approved => {
-      const current = clusterRegions[approved.region] || 0;
-      const available = approved.approved_capacity - current;
-
+  
+    // Get all accounts that have cluster data
+    const accountNames = Object.keys(clusterRegionsByAccount);
+  
+    // For each account, calculate its region comparison
+    return accountNames.map(accountName => {
+      const accountRegions = clusterRegionsByAccount[accountName] || {};
+      
+      const regions = approvedRegions.map(approved => {
+        const simplifiedRegion = this.simplifyRegionName(approved.region);
+        const current: number = Number(accountRegions[simplifiedRegion] || 0);
+        const available: number = Math.max(approved.approved_capacity - current, 0);
+  
+        return {
+          region: approved.region,
+          total_capacity: approved.approved_capacity,
+          current_capacity: current,
+          available,
+          status: this.determineStatus(current, approved.approved_capacity)
+        };
+      });
+  
       return {
-        region: approved.region,
-        total_capacity: approved.approved_capacity,
-        current_capacity: current,
-        available: available,
-        status: this.determineStatus(current, approved.approved_capacity)
+        accountName,
+        regions
       };
     });
   }
 
+  private simplifyRegionName(fullName: string): string {
+    const match = fullName.match(/^([^,]+)/);
+    if (match) {
+      return match[1].trim().replace(/\s+/g, '_');
+    }
+    return fullName;
+  }
+  
   private determineStatus(current: number, approved: number): string {
     if (current > approved) return 'EXCEEDED';
     if (current === approved) return 'AT_CAPACITY';

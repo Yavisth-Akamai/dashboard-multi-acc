@@ -12,6 +12,10 @@ export interface ApprovedRegion {
     status: string;
     created: string;
   }
+  export interface AccountComparisonData {
+    accountName: string;
+    regions: ComparisonData[];
+  }
   
   export interface AccountData {
     name: string;

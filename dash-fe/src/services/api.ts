@@ -1,5 +1,6 @@
 import axios from 'axios';
-import { Account, AccountUnapprovedRegions, ComparisonData, ClusterMetricResponse } from '../types/account.types';
+import { Account, AccountUnapprovedRegions, ComparisonData, ClusterMetricResponse, AccountComparisonData,
+} from '../types/account.types';
 
 
 
@@ -24,7 +25,7 @@ export const fetchAccounts = async (): Promise<Account[]> => {
   }
 };
 
-export const fetchApprovedComparison = async (): Promise<ComparisonData[]> => {
+export const fetchApprovedComparison = async (): Promise<AccountComparisonData[]> => {
   try {
     const response = await apiClient.get('/regions/comparison');
     return response.data;
