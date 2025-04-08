@@ -7,7 +7,7 @@ import { LinodeClustersService } from './linode-clusters.service';
 import { ClusterMetricsService } from './cluster-metrics.service';
 import { ClusterMetricResponse, ClusterMetric } from '../../../common/interfaces/region.interface';
 
-// Add interfaces for type safety
+
 import { 
   ApprovedRegion, 
   UnapprovedRegion, 
@@ -36,7 +36,7 @@ export class RegionsService {
       'approved_regions',
       JSON.stringify(regions),
       'EX',
-      3600 // 1 hour
+      3600
     );
   }
 
@@ -56,10 +56,10 @@ export class RegionsService {
       this.linodeClustersService.getClusterRegions()
     ]);
   
-    // Get all accounts that have cluster data
+
     const accountNames = Object.keys(clusterRegionsByAccount);
   
-    // For each account, calculate its region comparison
+
     return accountNames.map(accountName => {
       const accountRegions = clusterRegionsByAccount[accountName] || {};
       
@@ -105,10 +105,10 @@ export class RegionsService {
         this.clusterMetricsService.getClusterMetrics()
       ]);
 
-      // Transform the metrics response into account-grouped clusters
+
       const accountMetrics = this.groupMetricsByAccount(metricsResponse);
 
-      // Calculate unapproved regions for each account
+
       const unapprovedByAccount = Object.entries(accountMetrics).map(([accountName, metrics]) => {
         const unapprovedRegions = this.calculateUnapprovedRegions(
           approvedRegions,
@@ -140,25 +140,25 @@ export class RegionsService {
     approvedRegions: ApprovedRegionEntity[],
     metrics: ClusterMetric[]
   ): UnapprovedRegion[] {
-    // Helper function to normalize region names
+
     const normalizeRegionName = (region: string): string => {
       return region.split(',')[0].trim();
     };
 
-    // Create a map of approved regions and their capacities
+
     const approvedCapacities = approvedRegions.reduce((acc: Record<string, number>, region) => {
       acc[region.region] = region.approved_capacity;
       return acc;
     }, {});
 
-    // Count clusters per normalized region
+
     const regionCounts = metrics.reduce((acc: Record<string, number>, cluster) => {
       const normalizedRegion = normalizeRegionName(cluster.region);
       acc[normalizedRegion] = (acc[normalizedRegion] || 0) + 1;
       return acc;
     }, {});
 
-    // Calculate unapproved (excess) capacity
+
     return Object.entries(regionCounts)
       .map(([region, count]): UnapprovedRegion => {
         const approvedCapacity = approvedCapacities[region] || 0;

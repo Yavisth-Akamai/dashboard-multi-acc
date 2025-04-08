@@ -55,13 +55,13 @@ export class AccountsService {
 
   async addAccount(token: string): Promise<AccountEntity> {
     try {
-      // Fetch account info from Linode
+
       const { accountInfo, profileInfo } = await this.validateAndFetchAccountInfo(token);
 
-      // Generate a meaningful account name
+
       const accountName = this.generateAccountName(profileInfo, accountInfo);
 
-      // Check if account already exists
+
       const existingAccount = await this.accountRepository.findOne({ 
         where: { token } 
       });
@@ -70,14 +70,14 @@ export class AccountsService {
         if (existingAccount.isActive) {
           throw new ConflictException(`Account ${accountName} already exists`);
         } else {
-          // If account exists but is inactive, reactivate it with new token
+
           existingAccount.token = token;
           existingAccount.isActive = true;
           return this.accountRepository.save(existingAccount);
         }
       }
 
-      // Create new account
+
       const account = this.accountRepository.create({
         name: accountName,
         token,

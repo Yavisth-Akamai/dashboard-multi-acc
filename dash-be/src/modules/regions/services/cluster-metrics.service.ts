@@ -26,10 +26,10 @@ export class ClusterMetricsService {
 
   async getClusterMetrics(): Promise<ClusterMetricResponse[]> {
     try {
-      // Get all active accounts
+
       const accounts = await this.accountsService.getAccounts();
       
-      // Fetch clusters for each account
+
       const clustersByAccount = await Promise.all(
         accounts.map(async (account) => {
           try {
@@ -41,7 +41,7 @@ export class ClusterMetricsService {
               })
             );
             
-            // Map the clusters with proper region names
+
             const mappedClusters = response.data.data.map((cluster: any) => ({
               name: cluster.label,
               region: SLUG_TO_REGION[cluster.region] || cluster.region,

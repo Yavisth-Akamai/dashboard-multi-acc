@@ -18,6 +18,4 @@ export class ApprovedRegionEntity {
   @ManyToOne(() => AccountEntity)
   account: AccountEntity;
 
-  // @Column()
-  // accountId: number;
 }
