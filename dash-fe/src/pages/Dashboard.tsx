@@ -3,7 +3,7 @@ import { Container, Typography, Box } from '@mui/material';
 import SearchFilterWindow from '../components/SearchFilterWindow';
 import AccountExpandableTable from '../components/AccountExpandableTable';
 import { fetchApprovedComparison, fetchClusterMetrics, fetchUnapprovedRegions, fetchAccounts } from '../services/api';
-import { AccountData, ComparisonData, Account, AccountUnapprovedRegions, AccountComparisonData } from '../types/account.types';
+import { AccountData, ComparisonData, Account, AccountUnapprovedRegions} from '../types/account.types';
 
 interface DashboardProps {
   darkMode: boolean;
@@ -33,18 +33,21 @@ const Dashboard: React.FC<DashboardProps> = ({ darkMode, onDarkModeChange }) => 
         const accountComparison = comparisonsByAccount.find(
           comp => comp.accountName === accountName
         )?.regions || [];
-
+      
         const accountUnapproved = (unapprovedData as AccountUnapprovedRegions[])
           .find(data => data.accountName === accountName)
           ?.unapprovedRegions || [];
-
+      
         const accountMetrics = metricsData.find(
           data => data.accountName === accountName
         )?.clusters || [];
-
-        const totalCapacity = accountComparison.reduce((sum: number, r: ComparisonData) => 
-          sum + r.total_capacity, 0);
-
+      
+        // Calculate totalCapacity by summing all profile values
+        const totalCapacity = accountComparison.reduce((sum, region) => {
+          const profileSum = Object.values(region.total_capacity).reduce((a, b) => a + b, 0);
+          return sum + profileSum;
+        }, 0);
+      
         return {
           name: accountName,
           ha: true,
