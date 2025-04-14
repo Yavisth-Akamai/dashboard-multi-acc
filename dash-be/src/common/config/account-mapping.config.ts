@@ -5,27 +5,27 @@ export interface AccountNamePattern {
 
 export const ACCOUNT_NAME_MAPPINGS: AccountNamePattern[] = [
   {
-    pattern: /^.*-devtest-team-az$/,
+    pattern: /^akamai-cloudms-devtest-team-az$/,
     transform: 'dt_az'
   },
   {
-    pattern: /^.*-devtest-team-aws$/,
+    pattern: /^akamai-cloudms-devtest-team-aws$/,
     transform: 'dt_aws'
   },
   {
-    pattern: /^.*-e2e-team-az$/,
+    pattern: /^akamai-cloudms-e2e-team-az$/,
     transform: 'e2e_az'
   },
   {
-    pattern: /^.*-e2e-team-aws$/,
+    pattern: /^akamai-cloudms-e2e-team-aws$/,
     transform: 'e2e_aws'
   },
   {
-    pattern: /^.*-dev-team-az$/,
+    pattern: /^akamai-cloudms-dev-team-az$/,
     transform: 'dev_az'
   },
   {
-    pattern: /^.*-dev-team-aws$/,
+    pattern: /^akamai-cloudms-dev-team-aws$/,
     transform: 'dev_aws'
   }
 ];

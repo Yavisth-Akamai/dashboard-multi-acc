@@ -1,12 +1,9 @@
 import { Controller, Get, Post } from '@nestjs/common';
-import { RegionsService, AccountRegionData} from '../services/regions.service';
+import { RegionsService } from '../services/regions.service';
 import { ClusterMetricsService } from '../services/cluster-metrics.service';
 import { AccountUnapprovedRegions } from '../../../common/interfaces/region.interface';
-import { AccountEntity } from '../../accounts/entities/account.entity';
 import { ExcelService } from '../services/excel.service';
 import { AccountsService } from '../../accounts/accounts.service';
-import { Repository } from 'typeorm';
-
 
 @Controller('regions')
 export class RegionsController {
@@ -15,7 +12,6 @@ export class RegionsController {
     private readonly accountsService: AccountsService,
     private readonly clusterMetricsService: ClusterMetricsService,
     private readonly excelService: ExcelService,
-
   ) {}
 
   @Get('test-connection')
@@ -34,13 +30,13 @@ export class RegionsController {
   }
 
   @Post('sync')
-  async syncApprovedRegions(): Promise<{ message: string }> {
+  async syncApprovedRegions() {
     await this.regionsService.syncApprovedRegions();
     return { message: 'Regions synchronized successfully' };
   }
 
   @Get('comparison')
-  async getRegionComparison(): Promise<AccountRegionData[]> {
+  async getRegionComparison() {
     return this.regionsService.getRegionComparison();
   }
 

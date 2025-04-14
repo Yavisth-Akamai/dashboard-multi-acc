@@ -18,13 +18,13 @@ interface AccountExpandableTableProps {
 }
 
 const AccountExpandableTable: React.FC<AccountExpandableTableProps> = ({ accounts }) => {
-  console.log('AccountExpandableTable received accounts:', accounts); // Debug log
+  console.log('AccountExpandableTable received accounts:', accounts); 
   const [expandedPanel, setExpandedPanel] = useState<string | false>(false);
   
   return (
     <div>
       {accounts.map((account) => {
-        console.log(`Rendering account ${account.name}:`, account); // Debug log
+        console.log(`Rendering account ${account.name}:`, account);
         const isExpanded = expandedPanel === account.name;
         return (
           <Accordion 
@@ -61,7 +61,7 @@ const AccountExpandableTable: React.FC<AccountExpandableTableProps> = ({ account
                   HA: {account.ha ? 'Yes' : 'No'}
                 </Typography>
                 <Typography sx={{ width: '25%', color: 'text.secondary' }}>
-                  Total Capacity: {account.totalCapacity}
+                  Total Clusters: {account.totalCapacity}
                 </Typography>
                 <Typography sx={{ width: '25%', color: 'text.secondary' }}>
                   Created: {new Date(account.created).toLocaleDateString()}
