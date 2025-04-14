@@ -27,11 +27,13 @@ export const fetchAccounts = async (): Promise<Account[]> => {
 
 export const fetchApprovedComparison = async (): Promise<AccountComparisonData[]> => {
   try {
+    console.log('Attempting to fetch from:', `${API_BASE_URL}/regions/comparison`);
     const response = await apiClient.get('/regions/comparison');
+    console.log('Response received:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error fetching approved comparison:', error);
-    return [];
+    throw error;
   }
 };
 

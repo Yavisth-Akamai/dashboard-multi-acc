@@ -1,29 +1,19 @@
-export interface ApprovedRegion {
-  region: string;
-  total_capacity: {
-    dev: number;
-    devHA: number;
-    small: number;
-    medium: number;
-    large: number;
-  };
-  current_capacity: {
-    dev: number;
-    devHA: number;
-    small: number;
-    medium: number;
-    large: number;
-  };
-  available: {
-    dev: number;
-    devHA: number;
-    small: number;
-    medium: number;
-    large: number;
-  };
-  status: 'EXCEEDED' | 'AT_CAPACITY' | 'WITHIN_LIMIT';
+export interface ProfileCapacity {
+  D: number;
+  DHA: number;
+  S: number;
+  M: number;
+  L: number;
 }
 
+export interface ApprovedRegion {
+  region: string;
+  year: string;
+  total_capacity: ProfileCapacity;
+  current_capacity: ProfileCapacity;
+  available: ProfileCapacity;
+  status: 'EXCEEDED' | 'AT_CAPACITY' | 'WITHIN_LIMIT';
+}
   
   export interface ClusterMetric {
     name: string;

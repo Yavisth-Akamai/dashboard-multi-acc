@@ -6,7 +6,6 @@ import {
 } from '@mui/material';
 import { ApprovedRegion } from '../types/account.types';
 
-// Styled components for the column groups
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
   '&.category-header': {
     backgroundColor: theme.palette.grey[100],
@@ -45,7 +44,8 @@ interface ApprovedRegionsTableProps {
 }
 
 const ApprovedRegionsTable: React.FC<ApprovedRegionsTableProps> = ({ data }) => {
-  const profiles = ['dev', 'devHA', 'small', 'medium', 'large'];
+  console.log('ApprovedRegionsTable received data:', data);
+  const profiles = ['D', 'DHA', 'S', 'M', 'L'] as const;
 
   return (
     <TableContainer component={Paper} sx={{ marginBottom: 2 }}>
@@ -54,6 +54,7 @@ const ApprovedRegionsTable: React.FC<ApprovedRegionsTableProps> = ({ data }) => 
         <TableHead>
           <TableRow>
             <StyledHeaderCell rowSpan={2} className="region-header">Region</StyledHeaderCell>
+            <StyledHeaderCell rowSpan={2} className="region-header">Year</StyledHeaderCell>
             <StyledHeaderCell align="center" colSpan={5} className="category-header">
               Total Capacity
             </StyledHeaderCell>
@@ -65,32 +66,35 @@ const ApprovedRegionsTable: React.FC<ApprovedRegionsTableProps> = ({ data }) => 
             </StyledHeaderCell>
           </TableRow>
           <TableRow>
-            {/* Total Capacity Subcolumns */}
             {profiles.map((profile, index) => (
-              <StyledHeaderCell 
-                key={`total-${profile}`} 
+              <StyledHeaderCell
+                key={`total-${profile}`}
                 align="right"
-                className={`sub-header ${index === 0 ? 'first-in-category' : ''} ${index === profiles.length - 1 ? 'last-in-category' : ''}`}
+                className={`sub-header ${index === 0 ? 'first-in-category' : ''} ${
+                  index === profiles.length - 1 ? 'last-in-category' : ''
+                }`}
               >
                 {profile}
               </StyledHeaderCell>
             ))}
-            {/* Current Capacity Subcolumns */}
             {profiles.map((profile, index) => (
-              <StyledHeaderCell 
-                key={`current-${profile}`} 
+              <StyledHeaderCell
+                key={`current-${profile}`}
                 align="right"
-                className={`sub-header ${index === 0 ? 'first-in-category' : ''} ${index === profiles.length - 1 ? 'last-in-category' : ''}`}
+                className={`sub-header ${index === 0 ? 'first-in-category' : ''} ${
+                  index === profiles.length - 1 ? 'last-in-category' : ''
+                }`}
               >
                 {profile}
               </StyledHeaderCell>
             ))}
-            {/* Available Subcolumns */}
             {profiles.map((profile, index) => (
-              <StyledHeaderCell 
-                key={`available-${profile}`} 
+              <StyledHeaderCell
+                key={`available-${profile}`}
                 align="right"
-                className={`sub-header ${index === 0 ? 'first-in-category' : ''} ${index === profiles.length - 1 ? 'last-in-category' : ''}`}
+                className={`sub-header ${index === 0 ? 'first-in-category' : ''} ${
+                  index === profiles.length - 1 ? 'last-in-category' : ''
+                }`}
               >
                 {profile}
               </StyledHeaderCell>
@@ -98,42 +102,23 @@ const ApprovedRegionsTable: React.FC<ApprovedRegionsTableProps> = ({ data }) => 
           </TableRow>
         </TableHead>
         <TableBody>
-          {data.map((row) => (
-            <TableRow
-              key={row.region}
-              sx={{
-                backgroundColor: row.status === 'EXCEEDED' ? '#f07575' : 'inherit'
-              }}
-            >
-              <StyledBodyCell className="region-cell">{row.region}</StyledBodyCell>
-              {/* Total Capacity Values */}
-              {profiles.map((profile, index) => (
-                <StyledBodyCell 
-                  key={`total-${profile}`} 
-                  align="right"
-                  className={`${index === 0 ? 'first-in-category' : ''} ${index === profiles.length - 1 ? 'last-in-category' : ''}`}
-                >
-                  {row.total_capacity[profile as keyof typeof row.total_capacity]}
+          {data.map((row, rowIndex) => (
+            <TableRow key={`${row.region}-${rowIndex}`}>
+              <StyledBodyCell>{row.region}</StyledBodyCell>
+              <StyledBodyCell>{row.year}</StyledBodyCell>
+              {profiles.map((profile) => (
+                <StyledBodyCell key={`total-${profile}`} align="right">
+                  {row.total_capacity[profile]}
                 </StyledBodyCell>
               ))}
-              {/* Current Capacity Values */}
-              {profiles.map((profile, index) => (
-                <StyledBodyCell 
-                  key={`current-${profile}`} 
-                  align="right"
-                  className={`${index === 0 ? 'first-in-category' : ''} ${index === profiles.length - 1 ? 'last-in-category' : ''}`}
-                >
-                  {row.current_capacity[profile as keyof typeof row.current_capacity]}
+              {profiles.map((profile) => (
+                <StyledBodyCell key={`current-${profile}`} align="right">
+                  {row.current_capacity[profile]}
                 </StyledBodyCell>
               ))}
-              {/* Available Values */}
-              {profiles.map((profile, index) => (
-                <StyledBodyCell 
-                  key={`available-${profile}`} 
-                  align="right"
-                  className={`${index === 0 ? 'first-in-category' : ''} ${index === profiles.length - 1 ? 'last-in-category' : ''}`}
-                >
-                  {row.available[profile as keyof typeof row.available]}
+              {profiles.map((profile) => (
+                <StyledBodyCell key={`available-${profile}`} align="right">
+                  {row.available[profile]}
                 </StyledBodyCell>
               ))}
             </TableRow>

@@ -96,7 +96,8 @@ export class AccountsService {
 
   private generateAccountName(profileInfo: LinodeProfileInfo, accountInfo: LinodeAccountInfo): string {
     if (accountInfo.company) {
-      return `${profileInfo.username}`.toLowerCase().replace(/-/g, '_');
+      // return `${profileInfo.username}`.toLowerCase().replace(/-/g, '_');
+      return `${profileInfo.username}`.split('-').slice(1).join('_').toLowerCase();
     }
     return profileInfo.username;
   }

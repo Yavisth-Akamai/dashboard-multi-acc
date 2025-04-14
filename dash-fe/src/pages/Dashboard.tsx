@@ -22,43 +22,38 @@ const Dashboard: React.FC<DashboardProps> = ({ darkMode, onDarkModeChange }) => 
       const accountsData = await fetchAccounts();
       const accountNames = (accountsData as Account[]).map((account: Account) => account.name);
       
+      console.log('Fetching data...'); // Debug log
+  
       const [comparisonsByAccount, metricsData, unapprovedData] = await Promise.all([
         fetchApprovedComparison(),
         fetchClusterMetrics(),
         fetchUnapprovedRegions()
       ]);
-
-      // Process accounts
+  
+      console.log('Comparison data:', comparisonsByAccount); // Debug log
+  
       const processedAccounts = accountNames.map((accountName: string) => {
         const accountComparison = comparisonsByAccount.find(
           comp => comp.accountName === accountName
         )?.regions || [];
-      
-        const accountUnapproved = (unapprovedData as AccountUnapprovedRegions[])
-          .find(data => data.accountName === accountName)
-          ?.unapprovedRegions || [];
-      
-        const accountMetrics = metricsData.find(
-          data => data.accountName === accountName
-        )?.clusters || [];
-      
-        // Calculate totalCapacity by summing all profile values
-        const totalCapacity = accountComparison.reduce((sum, region) => {
-          const profileSum = Object.values(region.total_capacity).reduce((a, b) => a + b, 0);
-          return sum + profileSum;
-        }, 0);
-      
+  
+        console.log(`Processing account ${accountName}:`, accountComparison); // Debug log
+  
         return {
           name: accountName,
           ha: true,
-          totalCapacity,
+          totalCapacity: accountComparison.reduce((sum, region) => {
+            return sum + Object.values(region.total_capacity).reduce((a, b) => a + b, 0);
+          }, 0),
           created: new Date().toISOString(),
           approvedRegions: accountComparison,
-          unapprovedRegions: accountUnapproved,
-          clusterMetrics: accountMetrics
+          unapprovedRegions: unapprovedData.find(data => data.accountName === accountName)?.unapprovedRegions || [],
+          clusterMetrics: metricsData.find(data => data.accountName === accountName)?.clusters || []
         };
       });
-
+  
+      console.log('Processed accounts:', processedAccounts); // Debug log
+  
       setAccounts(accountNames);
       setAccountsData(processedAccounts);
       if (!selectedAccounts.length) {
@@ -70,7 +65,7 @@ const Dashboard: React.FC<DashboardProps> = ({ darkMode, onDarkModeChange }) => 
     } finally {
       setLoading(false);
     }
-  }, [selectedAccounts.length]); 
+  }, [selectedAccounts.length]);
 
   useEffect(() => {
 
@@ -102,6 +97,7 @@ const Dashboard: React.FC<DashboardProps> = ({ darkMode, onDarkModeChange }) => 
         <SearchFilterWindow
           darkMode={darkMode}
           onDarkModeChange={onDarkModeChange}
+          
           selectedAccounts={selectedAccounts}
           onAccountsChange={setSelectedAccounts}
           accounts={accounts}

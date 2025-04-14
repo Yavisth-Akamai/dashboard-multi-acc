@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import { formatAccountName } from '../utils/formatters';
 
 interface SearchFilterWindowProps {
   darkMode: boolean;
@@ -119,21 +120,21 @@ const SearchFilterWindow: React.FC<SearchFilterWindowProps> = ({
           
           {/* Account Filter */}
           <FormControl size="small">
-            <InputLabel>Accounts</InputLabel>
-            <Select
-              multiple
-              value={selectedAccounts}
-              onChange={handleAccountChange}
-              label="Accounts"
-              renderValue={(selected) => selected.join(', ')}
-            >
-              {accounts.map((account) => (
-                <MenuItem key={account} value={account}>
-                  {account}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <InputLabel>Accounts</InputLabel>
+          <Select
+            multiple
+            value={selectedAccounts}
+            onChange={handleAccountChange}
+            label="Accounts"
+            renderValue={(selected) => selected.map(formatAccountName).join(', ')}
+          >
+            {accounts.map((account) => (
+              <MenuItem key={account} value={account}>
+                {formatAccountName(account)}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
           {/* Dummy Filters */}
           {['Region Filter', 'Status Filter', 'Date Filter'].map((filter) => (

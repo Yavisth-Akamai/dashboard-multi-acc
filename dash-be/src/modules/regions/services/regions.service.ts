@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import { Redis } from 'ioredis';
 import { ApprovedRegionRepository } from '../repositories/approved-region.repository';
 import { ApprovedRegionEntity } from '../entities/approved-region.entity';
@@ -6,6 +6,9 @@ import { ExcelService } from './excel.service';
 import { LinodeClustersService } from './linode-clusters.service';
 import { ClusterMetricsService } from './cluster-metrics.service';
 import { ClusterMetricResponse, ClusterMetric } from '../../../common/interfaces/region.interface';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { AccountEntity } from '../../accounts/entities/account.entity';
 
 
 import { 
@@ -13,22 +16,142 @@ import {
   UnapprovedRegion, 
   AccountUnapprovedRegions,
 } from '../../../common/interfaces/region.interface';
+import { ProfileCapacity } from '../../../common/interfaces/region.interface';
+
+export interface AccountRegionData {
+  accountName: string;
+  regions: ApprovedRegion[];
+}
 
 @Injectable()
 export class RegionsService {
+  private readonly logger = new Logger(RegionsService.name); 
   constructor(
-    private readonly excelService: ExcelService,
+    @InjectRepository(AccountEntity)
+    private readonly accountRepository: Repository<AccountEntity>,
+    @InjectRepository(ApprovedRegionEntity)
     private readonly approvedRegionRepository: ApprovedRegionRepository,
+    private readonly excelService: ExcelService,
     private readonly linodeClustersService: LinodeClustersService,
     private readonly clusterMetricsService: ClusterMetricsService,
     @Inject('REDIS_CLIENT') private readonly redisClient: Redis
   ) {}
 
-  async syncApprovedRegions(): Promise<ApprovedRegionEntity[]> {
-    const regions = await this.excelService.getApprovedRegions();
-    const savedRegions = await this.approvedRegionRepository.bulkUpsert(regions);
-    await this.cacheRegions(savedRegions);
-    return savedRegions;
+  private calculateStatus(total: ProfileCapacity, current: ProfileCapacity): 'EXCEEDED' | 'AT_CAPACITY' | 'WITHIN_LIMIT' {
+    const totalSum = Object.values(total).reduce((sum: number, val: number) => sum + val, 0);
+    const currentSum = Object.values(current).reduce((sum: number, val: number) => sum + val, 0);
+
+    if (currentSum > totalSum) return 'EXCEEDED';
+    if (currentSum === totalSum) return 'AT_CAPACITY';
+    return 'WITHIN_LIMIT';
+  }
+
+  async syncApprovedRegions(): Promise<void> {
+    try {
+      this.logger.debug('Starting sync of approved regions');
+      const excelData = await this.excelService.getApprovedRegions();
+      this.logger.debug(`Processing ${excelData.length} records from Excel`);
+      
+      const validEntities: Partial<ApprovedRegionEntity>[] = [];
+
+      for (const data of excelData) {
+        try {
+          const accountEntity = await this.accountRepository.findOne({ 
+            where: { name: data.accountName } 
+          });
+
+          if (!accountEntity) {
+            this.logger.warn(`Skipping record - Account not found: ${data.accountName}`);
+            continue;
+          }
+
+          const totalCapacitySum = Object.values(data.total_capacity as ProfileCapacity)
+            .reduce((sum: number, val: number) => sum + val, 0);
+
+          const entity: Partial<ApprovedRegionEntity> = {
+            region: data.region as string,
+            year: data.year as string,
+            approved_capacity: totalCapacitySum,
+            total_capacity: data.total_capacity as ProfileCapacity,
+            current_capacity: data.current_capacity as ProfileCapacity,
+            available: data.available as ProfileCapacity,
+            status: this.calculateStatus(
+              data.total_capacity as ProfileCapacity,
+              data.current_capacity as ProfileCapacity
+            ),
+            account: accountEntity
+          };
+
+          validEntities.push(entity);
+        } catch (error) {
+          this.logger.warn(`Error processing record for ${data.accountName}:`, error);
+          continue;
+        }
+      }
+
+      this.logger.debug(`Found ${validEntities.length} valid records to sync`);
+      
+      if (validEntities.length > 0) {
+        // Clear existing records first
+        await this.approvedRegionRepository.clear();
+        
+        // Save new records
+        await this.approvedRegionRepository.save(validEntities);
+        
+        await this.invalidateCache();
+        this.logger.debug('Sync completed successfully');
+      } else {
+        this.logger.warn('No valid records found to sync');
+      }
+    } catch (error) {
+      this.logger.error('Error in syncApprovedRegions:', error);
+      throw new Error(`Failed to sync approved regions: ${error.message}`);
+    }
+  }
+
+  private async invalidateCache(): Promise<void> {
+    await this.redisClient.del('approved_regions');
+  }
+
+
+
+  async getRegionComparison(): Promise<AccountRegionData[]> {
+    const cached = await this.redisClient.get('approved_regions');
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
+    const regions = await this.approvedRegionRepository.find({
+      relations: ['account']
+    });
+
+    const accountRegions = regions.reduce((acc, region) => {
+      if (!region.account) return acc;
+      
+      const accountName = region.account.name;
+      if (!acc[accountName]) {
+        acc[accountName] = [];
+      }
+      
+      acc[accountName].push({
+        region: region.region,
+        year: region.year,
+        approved_capacity: region.approved_capacity,
+        total_capacity: region.total_capacity,
+        current_capacity: region.current_capacity,
+        available: region.available,
+        status: region.status
+      });
+      return acc;
+    }, {} as Record<string, ApprovedRegion[]>);
+
+    const result = Object.entries(accountRegions).map(([accountName, regions]) => ({
+      accountName,
+      regions
+    }));
+
+    await this.redisClient.set('approved_regions', JSON.stringify(result), 'EX', 3600);
+    return result;
   }
 
   private async cacheRegions(regions: ApprovedRegionEntity[]): Promise<void> {
@@ -48,40 +171,6 @@ export class RegionsService {
     const regions = await this.approvedRegionRepository.find();
     await this.cacheRegions(regions);
     return regions;
-  }
-
-  async getRegionComparison() {
-    const [approvedRegions, clusterRegionsByAccount] = await Promise.all([
-      this.getApprovedRegions(),
-      this.linodeClustersService.getClusterRegions()
-    ]);
-  
-
-    const accountNames = Object.keys(clusterRegionsByAccount);
-  
-
-    return accountNames.map(accountName => {
-      const accountRegions = clusterRegionsByAccount[accountName] || {};
-      
-      const regions = approvedRegions.map(approved => {
-        const simplifiedRegion = this.simplifyRegionName(approved.region);
-        const current: number = Number(accountRegions[simplifiedRegion] || 0);
-        const available: number = Math.max(approved.approved_capacity - current, 0);
-  
-        return {
-          region: approved.region,
-          total_capacity: approved.approved_capacity,
-          current_capacity: current,
-          available,
-          status: this.determineStatus(current, approved.approved_capacity)
-        };
-      });
-  
-      return {
-        accountName,
-        regions
-      };
-    });
   }
 
   private simplifyRegionName(fullName: string): string {

@@ -1,18 +1,47 @@
 import { Controller, Get, Post } from '@nestjs/common';
-import { RegionsService } from '../services/regions.service';
+import { RegionsService, AccountRegionData} from '../services/regions.service';
 import { ClusterMetricsService } from '../services/cluster-metrics.service';
 import { AccountUnapprovedRegions } from '../../../common/interfaces/region.interface';
+import { AccountEntity } from '../../accounts/entities/account.entity';
+import { ExcelService } from '../services/excel.service';
+import { AccountsService } from '../../accounts/accounts.service';
+import { Repository } from 'typeorm';
+
 
 @Controller('regions')
 export class RegionsController {
   constructor(
     private readonly regionsService: RegionsService,
-    private readonly clusterMetricsService: ClusterMetricsService
+    private readonly accountsService: AccountsService,
+    private readonly clusterMetricsService: ClusterMetricsService,
+    private readonly excelService: ExcelService,
+
   ) {}
 
+  @Get('test-connection')
+  async testConnection() {
+    return { message: 'Backend is connected!' };
+  }
+
+  @Get('accounts')
+  async getAccounts() {
+    return this.accountsService.getAccounts();
+  }
+  
+  @Get('test-excel')
+  async testExcelReading() {
+    return this.excelService.getApprovedRegions();
+  }
+
   @Post('sync')
-  async syncApprovedRegions() {
-    return this.regionsService.syncApprovedRegions();
+  async syncApprovedRegions(): Promise<{ message: string }> {
+    await this.regionsService.syncApprovedRegions();
+    return { message: 'Regions synchronized successfully' };
+  }
+
+  @Get('comparison')
+  async getRegionComparison(): Promise<AccountRegionData[]> {
+    return this.regionsService.getRegionComparison();
   }
 
   @Get('approved')
@@ -20,12 +49,6 @@ export class RegionsController {
     return this.regionsService.getApprovedRegions();
   }
 
-  // regions.controller.ts
-@Get('comparison')
-async getRegionComparison() {
-  return this.regionsService.getRegionComparison();
-}
-  
   @Get('metrics')
   async getClusterMetrics() {
     return this.clusterMetricsService.getClusterMetrics();
