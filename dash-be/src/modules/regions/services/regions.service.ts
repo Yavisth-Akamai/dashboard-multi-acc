@@ -42,6 +42,62 @@ export class RegionsService {
     if (currentSum === totalSum) return 'AT_CAPACITY';
     return 'WITHIN_LIMIT';
   }
+  
+  async getRegionComparison(): Promise<AccountRegionData[]> {
+    const cached = await this.redisClient.get('approved_regions');
+    if (cached) return JSON.parse(cached);
+  
+    const [regions, clusterMetrics] = await Promise.all([
+      this.approvedRegionRepository.find({
+        relations: ['account']
+      }),
+      this.clusterMetricsService.getClusterMetrics()
+    ]);
+  
+    const result = Object.entries(
+      regions.reduce((acc, region) => {
+        if (!region.account) return acc;
+        
+        const accountName = region.account.name;
+        if (!acc[accountName]) acc[accountName] = [];
+        
+        const accountMetrics = clusterMetrics.find(m => m.accountName === accountName);
+        const regionClusters = accountMetrics ? 
+          accountMetrics.clusters.filter(c => c.region.includes(region.region)) : 
+          [];
+        
+        const current_capacity = this.calculateProfileTypeCounts(regionClusters);
+        
+        const available: ProfileCapacity = {
+          D: Math.max(0, region.total_capacity.D - current_capacity.D),
+          DHA: Math.max(0, region.total_capacity.DHA - current_capacity.DHA),
+          S: Math.max(0, region.total_capacity.S - current_capacity.S),
+          M: Math.max(0, region.total_capacity.M - current_capacity.M),
+          L: Math.max(0, region.total_capacity.L - current_capacity.L)
+        };
+        
+        const status = this.calculateStatus(region.total_capacity, current_capacity);
+        
+        acc[accountName].push({
+          region: region.region,
+          year: region.year,
+          approved_capacity: region.approved_capacity,
+          total_capacity: region.total_capacity,
+          current_capacity,
+          available,
+          status
+        });
+        return acc;
+      }, {} as Record<string, ApprovedRegion[]>)
+    ).map(([accountName, regions]) => ({
+      accountName,
+      regions
+    }));
+  
+    await this.redisClient.set('approved_regions', JSON.stringify(result), 'EX', 3600);
+    return result;
+  }
+  
 
   async syncApprovedRegions(): Promise<void> {
     try {
@@ -87,41 +143,6 @@ export class RegionsService {
     await this.redisClient.del('approved_regions');
   }
 
-  async getRegionComparison(): Promise<AccountRegionData[]> {
-    const cached = await this.redisClient.get('approved_regions');
-    if (cached) return JSON.parse(cached);
-
-    const regions = await this.approvedRegionRepository.find({
-      relations: ['account']
-    });
-
-    const result = Object.entries(
-      regions.reduce((acc, region) => {
-        if (!region.account) return acc;
-        
-        const accountName = region.account.name;
-        if (!acc[accountName]) acc[accountName] = [];
-        
-        acc[accountName].push({
-          region: region.region,
-          year: region.year,
-          approved_capacity: region.approved_capacity,
-          total_capacity: region.total_capacity,
-          current_capacity: region.current_capacity,
-          available: region.available,
-          status: region.status
-        });
-        return acc;
-      }, {} as Record<string, ApprovedRegion[]>)
-    ).map(([accountName, regions]) => ({
-      accountName,
-      regions
-    }));
-
-    await this.redisClient.set('approved_regions', JSON.stringify(result), 'EX', 3600);
-    return result;
-  }
-
   async getApprovedRegions(): Promise<ApprovedRegionEntity[]> {
     const cached = await this.redisClient.get('approved_regions');
     if (cached) return JSON.parse(cached);
@@ -137,16 +158,46 @@ export class RegionsService {
         this.getApprovedRegions(),
         this.clusterMetricsService.getClusterMetrics()
       ]);
-
+  
       return Object.entries(this.groupMetricsByAccount(metricsResponse))
-        .map(([accountName, metrics]) => ({
-          accountName,
-          unapprovedRegions: this.calculateUnapprovedRegions(approvedRegions, metrics)
-        }));
+        .map(([accountName, metrics]) => {
+          try {
+            const unapprovedRegions = this.calculateUnapprovedRegions(
+              approvedRegions.filter(r => r.account?.name === accountName), 
+              metrics
+            );
+            
+            return {
+              accountName,
+              unapprovedRegions
+            };
+          } catch (error) {
+            this.logger.error(`Error processing unapproved regions for account ${accountName}:`, error);
+            return {
+              accountName,
+              unapprovedRegions: []
+            };
+          }
+        });
     } catch (error) {
-      throw error;
+      this.logger.error('Error in getUnapprovedRegions:', error);
+      return [];
     }
   }
+  private calculateProfileTypeCounts(clusters: ClusterMetric[]): ProfileCapacity {
+    const counts: ProfileCapacity = { D: 0, DHA: 0, S: 0, M: 0, L: 0 };
+    
+    clusters.forEach(cluster => {
+      if (cluster.profileType) {
+        counts[cluster.profileType]++;
+      } else {
+        counts.D++;
+      }
+    });
+    
+    return counts;
+  }
+    
 
   private groupMetricsByAccount(metricsResponse: ClusterMetricResponse[]): Record<string, ClusterMetric[]> {
     return metricsResponse.reduce((acc, response) => {
@@ -160,21 +211,53 @@ export class RegionsService {
     metrics: ClusterMetric[]
   ): UnapprovedRegion[] {
     const approvedCapacities = approvedRegions.reduce((acc, region) => {
-      acc[region.region] = region.approved_capacity;
+      if (!acc[region.region]) {
+        acc[region.region] = { ...region.total_capacity };
+      } else {
+        Object.keys(region.total_capacity).forEach(profile => {
+          const p = profile as keyof ProfileCapacity;
+          acc[region.region][p] += region.total_capacity[p];
+        });
+      }
       return acc;
-    }, {} as Record<string, number>);
-
-    const regionCounts = metrics.reduce((acc, cluster) => {
+    }, {} as Record<string, ProfileCapacity>);
+  
+    const regionProfiles = metrics.reduce((acc, cluster) => {
       const region = cluster.region.split(',')[0].trim();
-      acc[region] = (acc[region] || 0) + 1;
+      
+      if (!acc[region]) {
+        acc[region] = { D: 0, DHA: 0, S: 0, M: 0, L: 0 };
+      }
+      
+      if (cluster.profileType) {
+        acc[region][cluster.profileType]++;
+      } else {
+        acc[region].D++;
+      }
+      
       return acc;
-    }, {} as Record<string, number>);
-
-    return Object.entries(regionCounts)
-      .map(([region, count]): UnapprovedRegion => ({
-        region,
-        capacity: count - (approvedCapacities[region] || 0)
-      }))
-      .filter(item => item.capacity > 0);
+    }, {} as Record<string, ProfileCapacity>);
+  
+    const result: UnapprovedRegion[] = [];
+    
+    Object.entries(regionProfiles).forEach(([region, profileCount]) => {
+      const approvedCapacity = approvedCapacities[region] || { D: 0, DHA: 0, S: 0, M: 0, L: 0 };
+      
+      Object.entries(profileCount).forEach(([profile, count]) => {
+        const p = profile as keyof ProfileCapacity;
+        const excess = count - (approvedCapacity[p] || 0);
+        
+        if (excess > 0) {
+          result.push({
+            region,
+            capacity: excess,
+            profile: p
+          });
+        }
+      });
+    });
+    
+    return result;
   }
+  
 }

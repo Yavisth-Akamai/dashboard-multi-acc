@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Account, AccountUnapprovedRegions, ComparisonData, ClusterMetricResponse, AccountComparisonData,
+import { Account, AccountUnapprovedRegions, ComparisonData, ClusterMetricResponse, AccountComparisonData, 
 } from '../types/account.types';
 
 
@@ -24,6 +24,16 @@ export const fetchAccounts = async (): Promise<Account[]> => {
     return [];
   }
 };
+export const fetchClusterMetrics = async (): Promise<ClusterMetricResponse[]> => {
+  try {
+    const response = await apiClient.get('/regions/metrics');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching cluster metrics:', error);
+    return [];
+  }
+};
+
 
 export const fetchApprovedComparison = async (): Promise<AccountComparisonData[]> => {
   try {
@@ -43,16 +53,6 @@ export const fetchUnapprovedRegions = async (): Promise<AccountUnapprovedRegions
     return response.data;
   } catch (error) {
     console.error('Error fetching unapproved regions:', error);
-    return [];
-  }
-};
-
-export const fetchClusterMetrics = async (): Promise<ClusterMetricResponse[]> => {
-  try {
-    const response = await apiClient.get('/regions/metrics');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching cluster metrics:', error);
     return [];
   }
 };

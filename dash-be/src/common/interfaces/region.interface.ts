@@ -1,6 +1,7 @@
 export interface UnapprovedRegion {
   region: string;
   capacity: number;
+  profile?: keyof ProfileCapacity;
 }
 export interface ProfileCapacity {
   D: number;
@@ -40,6 +41,10 @@ export interface ClusterMetric {
   name: string;
   status: string;
   created: string;
+  id?: number;
+  pools?: any[];
+  totalNodeCount?: number;
+  profileType?: 'D' | 'DHA' | 'S' | 'M' | 'L';
 }
 
 export interface RegionCapacity {

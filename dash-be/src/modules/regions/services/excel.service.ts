@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as XLSX from 'xlsx-style';
 import { ProfileCapacity, ExcelData } from '../../../common/interfaces/region.interface';
-import { PROFILE_COLOR_MAPPINGS } from '../../../common/config/profile-colors.config';
+import { determineProfileType } from '../../../common/constants/instance-type-mapping.constant';
+
 
 interface ExcelRow {
   [key: number]: string | null;
@@ -13,15 +14,36 @@ export class ExcelService {
   private readonly logger = new Logger(ExcelService.name);
   private readonly excelFilePath = './approved_regions.xlsx';
 
-  private getProfileFromColor(cell: XLSX.CellObject): string {
-    if (!cell?.s?.fill?.fgColor?.rgb) {
+  private determineProfileType(memoryInfo: string | null, nodeCount: string | null): string {
+    if (!memoryInfo || !nodeCount) {
+      this.logger.debug('Missing memory or node data, defaulting to D');
       return 'D';
     }
-    const colorHex = '#' + cell.s.fill.fgColor.rgb.replace(/^FF/, '').toLowerCase();
-    const mapping = PROFILE_COLOR_MAPPINGS.find(m => 
-      m.color.toLowerCase() === colorHex
-    );
-    return mapping ? mapping.profile : 'D';
+    
+    const nodes = parseInt(nodeCount, 10);
+    if (isNaN(nodes)) {
+      this.logger.debug(`Invalid node count: ${nodeCount}, defaulting to D`);
+      return 'D';
+    }
+    
+    const memoryLower = memoryInfo.toLowerCase();
+    
+    let memorySize = 0;
+    if (memoryLower.includes('32gb') || memoryLower.includes('32 gb') || memoryLower.includes('dedicated 32')) {
+      memorySize = 32;
+    } else if (memoryLower.includes('16gb') || memoryLower.includes('16 gb') || memoryLower.includes('dedicated 16')) {
+      memorySize = 16;
+    } else if (memoryLower.includes('8gb') || memoryLower.includes('8 gb') || memoryLower.includes('dedicated 8')) {
+      memorySize = 8;
+    } else if (memoryLower.includes('4gb') || memoryLower.includes('4 gb') || memoryLower.includes('dedicated 4')) {
+      memorySize = 4;
+    } else if (memoryLower.includes('64gb') || memoryLower.includes('64 gb') || memoryLower.includes('dedicated 64')) {
+      memorySize = 64;
+    }
+    
+    this.logger.debug(`Extracted memory size: ${memorySize}GB from "${memoryLower}"`);
+    
+    return determineProfileType(memorySize, nodes);
   }
 
   private transformAccountName(fullAccountName: string | null): string {
@@ -55,8 +77,10 @@ export class ExcelService {
         const row = data[rowIndex] as ExcelRow;
         if (!row || row.length === 0) continue;
 
-        const profileCell = worksheet[XLSX.utils.encode_cell({ r: rowIndex, c: 12 })];
-        const profile = this.getProfileFromColor(profileCell);
+        const memoryInfo = row[12] as string;
+        const nodeCount = row[13] as string;
+        
+        const profile = this.determineProfileType(memoryInfo, nodeCount);
 
         const capacity: ProfileCapacity = {
           D: profile === 'D' ? 1 : 0,

@@ -4,9 +4,13 @@ import { ClusterMetricsService } from '../services/cluster-metrics.service';
 import { AccountUnapprovedRegions } from '../../../common/interfaces/region.interface';
 import { ExcelService } from '../services/excel.service';
 import { AccountsService } from '../../accounts/accounts.service';
+import * as XLSX from 'xlsx-style';
+import { Logger } from '@nestjs/common';
+import { HttpException, HttpStatus } from '@nestjs/common';
 
 @Controller('regions')
 export class RegionsController {
+  private readonly logger = new Logger(RegionsService.name); 
   constructor(
     private readonly regionsService: RegionsService,
     private readonly accountsService: AccountsService,
@@ -50,8 +54,64 @@ export class RegionsController {
     return this.clusterMetricsService.getClusterMetrics();
   }
   
+
   @Get('unapproved')
   async getUnapprovedRegions(): Promise<AccountUnapprovedRegions[]> {
-    return this.regionsService.getUnapprovedRegions();
+    try {
+      return await this.regionsService.getUnapprovedRegions();
+    } catch (error) {
+      this.logger.error('Error in getUnapprovedRegions controller:', error);
+      return [];
+    }
   }
+
+  @Get('debug-excel')
+  async debugExcelData() {
+    try {
+      const workbook = XLSX.readFile('./approved_regions.xlsx', { cellStyles: true });
+      const worksheet = workbook.Sheets[workbook.SheetNames[2]];
+      
+      const data = XLSX.utils.sheet_to_json(worksheet, { 
+        header: 1,
+        raw: false,
+        defval: null
+      });
+      
+      return {
+        sheetNames: workbook.SheetNames,
+        headers: data[0],
+        rows: data.slice(83, 92)
+      };
+    } catch (error) {
+      this.logger.error('Error debugging Excel data:', error);
+      throw new HttpException('Failed to read Excel file', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Get('debug-profile')
+  async debugProfileDetermination() {
+    const testCases = [
+      { memory: 'Dedicated 8 GB', nodes: '7', expected: 'D' },
+      { memory: 'Dedicated 8 GB', nodes: '8', expected: 'DHA' },
+      { memory: 'Dedicated 8 GB', nodes: '16', expected: 'DHA' },
+      { memory: 'Dedicated 16 GB', nodes: '16', expected: 'S' },
+      { memory: 'Dedicated 16 GB', nodes: '17', expected: 'M' },
+      { memory: 'Dedicated 32 GB', nodes: '5', expected: 'L' },
+      { memory: 'Dedicated 32 GB', nodes: '20', expected: 'L' },
+    ];
+    
+    const results = testCases.map(test => {
+      const profile = this.excelService['determineProfileType'](test.memory, test.nodes);
+      return {
+        ...test,
+        actual: profile,
+        correct: profile === test.expected
+      };
+    });
+  
+  return {
+    results,
+    allCorrect: results.every(r => r.correct)
+  };
+}
 }
