@@ -53,7 +53,7 @@ const AccountExpandableTable: React.FC<AccountExpandableTableProps> = ({ account
                     transition: 'all 0.2s ease-in-out',
                   }}
                 >
-                  {formatAccountName(account.name)}
+                  {account.name}
                 </Typography>
                 <Typography sx={{ width: '25%', color: 'text.secondary' }}>
                   HA: {account.ha ? 'Yes' : 'No'}

@@ -4,7 +4,7 @@ import { ClusterMetricsService } from '../services/cluster-metrics.service';
 import { AccountUnapprovedRegions } from '../../../common/interfaces/region.interface';
 import { ExcelService } from '../services/excel.service';
 import { AccountsService } from '../../accounts/accounts.service';
-import * as XLSX from 'xlsx-style';
+import * as XLSX from 'xlsx';
 import { Logger } from '@nestjs/common';
 import { HttpException, HttpStatus } from '@nestjs/common';
 
@@ -46,7 +46,7 @@ export class RegionsController {
 
   @Get('approved')
   async getApprovedRegions() {
-    return this.regionsService.getApprovedRegions();
+    return this.excelService.getApprovedRegions();
   }
 
   @Get('metrics')

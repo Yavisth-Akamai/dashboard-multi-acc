@@ -1,7 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
-import * as XLSX from 'xlsx-style';
+import * as XLSX from 'xlsx';
+// import * as path from 'path';
 import { ProfileCapacity, ExcelData } from '../../../common/interfaces/region.interface';
 import { determineProfileType } from '../../../common/constants/instance-type-mapping.constant';
+import { ACCOUNT_NAME_MAPPINGS } from '../../../common/config/account-mapping.config';
+import { normalizeAccountName } from '../../../common/utils/account-normalizer';
+
 
 
 interface ExcelRow {
@@ -12,7 +16,7 @@ interface ExcelRow {
 @Injectable()
 export class ExcelService {
   private readonly logger = new Logger(ExcelService.name);
-  private readonly excelFilePath = './approved_regions.xlsx';
+  private readonly excelFilePath = process.env.EXCEL_FILE_PATH || './approved_regions.xlsx';
 
   private determineProfileType(memoryInfo: string | null, nodeCount: string | null): string {
     if (!memoryInfo || !nodeCount) {
@@ -46,18 +50,10 @@ export class ExcelService {
     return determineProfileType(memorySize, nodes);
   }
 
+
   private transformAccountName(fullAccountName: string | null): string {
     if (!fullAccountName) return 'unknown';
-    
-    const mappings: Record<string, string> = {
-      'akamai-cloudms-devtest-team-az': 'ychopra_dt_az',
-      'akamai-cloudms-devtest-team-aws': 'ychopra_dt_aws',
-      'akamai-cloudms-dev-team-az': 'ychopra_dev_az',
-      'akamai-cloudms-dev-team-aws': 'ychopra_dev_aws',
-      'akamai-cloudms-e2e-team-az': 'ychopra_e2e_az',
-      'akamai-cloudms-e2e-team-aws': 'ychopra_e2e_aws',
-    };
-    return mappings[fullAccountName] || fullAccountName;
+    return normalizeAccountName(fullAccountName);
   }
 
   async getApprovedRegions(): Promise<ExcelData[]> {

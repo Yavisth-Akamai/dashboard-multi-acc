@@ -1,5 +1,3 @@
-// dash-be/src/modules/regions/regions.module.ts
-
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AccountEntity } from '../../modules/accounts/entities/account.entity';

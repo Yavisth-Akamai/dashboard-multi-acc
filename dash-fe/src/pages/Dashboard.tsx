@@ -10,11 +10,10 @@ interface DashboardProps {
   onDarkModeChange: () => void;
 }
 
-const POLLING_INTERVAL = 30000; // Increased to 30 seconds for better performance
+const POLLING_INTERVAL = 30000;
 const MAX_RETRIES = 3;
 
 const Dashboard: React.FC<DashboardProps> = ({ darkMode, onDarkModeChange }) => {
-  // State management
   const [initialLoading, setInitialLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,7 +75,7 @@ const Dashboard: React.FC<DashboardProps> = ({ darkMode, onDarkModeChange }) => 
       
       if (retryCount < MAX_RETRIES) {
         setRetryCount(prev => prev + 1);
-        setTimeout(() => fetchData(isInitialLoad), 2000 * (retryCount + 1)); // Exponential backoff
+        setTimeout(() => fetchData(isInitialLoad), 2000 * (retryCount + 1));
       } else {
         setError('Failed to load dashboard data. Please try again later.');
       }

@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  dash-be:
+    image: bpgcstag.azurecr.io/gcbpcicd/dash-be:v0.0.1
+    build:
+      context: ./dash-be
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./dash-be:/app
+      - /app/node_modules
+    env_file:
+      - .env
+    command: npm run start:dev
+    depends_on:
+      - redis
+      - postgres
+
+  dash-fe:
+    image: bpgcstag.azurecr.io/gcbpcicd/dash-fe:v0.0.1
+    build:
+      context: ./dash-fe
+    ports:
+      - "3001:80"
+    volumes:
+      - ./dash-fe:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - REACT_APP_API_URL=http://localhost:3000
+    stdin_open: true
+    tty: true
+    depends_on:
+      - dash-be
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  postgres:
+    image: postgres:15
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+  
+  init:
+    build:
+      context: .
+      dockerfile: Dockerfile.init
+    depends_on:
+      - dash-be
+    restart: "no"

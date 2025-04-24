@@ -44,6 +44,7 @@ export class RegionsService {
   }
   
   async getRegionComparison(): Promise<AccountRegionData[]> {
+    console.log('Fetching region comparison data...');
     const cached = await this.redisClient.get('approved_regions');
     if (cached) return JSON.parse(cached);
   
@@ -53,9 +54,12 @@ export class RegionsService {
       }),
       this.clusterMetricsService.getClusterMetrics()
     ]);
-  
+
+    
     const result = Object.entries(
       regions.reduce((acc, region) => {
+        console.log('Processing region:', region.region);
+        console.log('Region account:', region.account);
         if (!region.account) return acc;
         
         const accountName = region.account.name;
@@ -108,6 +112,7 @@ export class RegionsService {
         const accountEntity = await this.accountRepository.findOne({ 
           where: { name: data.accountName } 
         });
+        console.log('Trying to find account for:', data.accountName);
 
         if (!accountEntity) continue;
 

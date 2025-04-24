@@ -4,7 +4,8 @@ import { Repository } from 'typeorm';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { AccountEntity } from './entities/account.entity';
-
+import { ACCOUNT_NAME_MAPPINGS } from '../../common/config/account-mapping.config';
+import { normalizeAccountName } from '../../common/utils/account-normalizer';
 interface LinodeAccountInfo {
   email: string;
   company?: string;
@@ -57,9 +58,11 @@ export class AccountsService {
     try {
 
       const { accountInfo, profileInfo } = await this.validateAndFetchAccountInfo(token);
-
+      console.log('Account Info:', accountInfo);
+      console.log('Profile Info:', profileInfo);
 
       const accountName = this.generateAccountName(profileInfo, accountInfo);
+      console.log('Generated Account Name:', accountName);
 
 
       const existingAccount = await this.accountRepository.findOne({ 
@@ -93,15 +96,14 @@ export class AccountsService {
       throw new Error(`Failed to add account: ${error.message}`);
     }
   }
-
+ 
   private generateAccountName(profileInfo: LinodeProfileInfo, accountInfo: LinodeAccountInfo): string {
     if (accountInfo.company) {
-      // return `${profileInfo.username}`.toLowerCase().replace(/-/g, '_');
-      return `${profileInfo.username}`.split('-').slice(1).join('_').toLowerCase();
+      const raw = profileInfo.username; 
+      return normalizeAccountName(raw); 
     }
-    return profileInfo.username;
+    return normalizeAccountName(profileInfo.username);
   }
-
 
   async getAccounts(): Promise<AccountEntity[]> {
     return this.accountRepository.find({ where: { isActive: true } });
