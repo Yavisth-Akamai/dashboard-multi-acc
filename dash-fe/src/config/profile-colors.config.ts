@@ -1,5 +1,3 @@
-// dash-fe/src/config/profile-colors.config.ts
-
 export interface ProfileColorMapping {
     color: string;
     profile: string;

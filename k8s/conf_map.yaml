@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dash-env
+data:
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  EXCEL_FILE_PATH: /app/approved_regions.xlsx

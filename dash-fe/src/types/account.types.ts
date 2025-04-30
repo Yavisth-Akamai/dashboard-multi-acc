@@ -5,6 +5,9 @@ export interface ProfileCapacity {
   M: number;
   L: number;
 }
+export interface AuthResponse {
+  token: string;
+}
 
 export interface ApprovedRegion {
   region: string;

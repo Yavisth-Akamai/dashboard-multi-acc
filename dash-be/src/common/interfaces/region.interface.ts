@@ -25,7 +25,7 @@ export interface ExcelData {
 export interface ApprovedRegion {
   region: string;
   year: string;
-  approved_capacity: number; // Add this field
+  approved_capacity: number;
   total_capacity: ProfileCapacity;
   current_capacity: ProfileCapacity;
   available: ProfileCapacity;

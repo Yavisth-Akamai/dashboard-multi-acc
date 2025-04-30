@@ -1,10 +1,9 @@
 import axios from 'axios';
-import { Account, AccountUnapprovedRegions, ComparisonData, ClusterMetricResponse, AccountComparisonData, 
+import { Account, AccountUnapprovedRegions,ClusterMetricResponse, AccountComparisonData, AuthResponse
 } from '../types/account.types';
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3000';
 
-
-const API_BASE_URL = 'http://localhost:3000';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -54,5 +53,24 @@ export const fetchUnapprovedRegions = async (): Promise<AccountUnapprovedRegions
   } catch (error) {
     console.error('Error fetching unapproved regions:', error);
     return [];
+  }
+};
+
+export const login = async (email: string, password: string): Promise<AuthResponse> => {
+  try {
+    const response = await apiClient.post('/auth/login', { email, password });
+    return response.data;
+  } catch (error) {
+    console.error('Error logging in:', error);
+    throw error;
+  }
+};
+
+export const signup = async (email: string, password: string): Promise<void> => {
+  try {
+    await apiClient.post('/auth/signup', { email, password });
+  } catch (error) {
+    console.error('Error signing up:', error);
+    throw error;
   }
 };

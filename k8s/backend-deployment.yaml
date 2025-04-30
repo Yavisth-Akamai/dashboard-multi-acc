@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: dash-be
+spec:
+  selector:
+    app: dash-be
+  ports:
+    - port: 3000
+      targetPort: 3000
+  type: NodePort
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dash-be
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dash-be
+  template:
+    metadata:
+      labels:
+        app: dash-be
+    spec:
+      containers:
+        - name: dash-be
+          # image: dash-be:v0.0.2
+          image: bpgcstag.azurecr.io/gcbpcicd/dash-be:v0.0.3
+          imagePullPolicy: Always
+          envFrom:
+            - secretRef:
+                name: db-secret
+            - configMapRef:
+                name: dash-env  
+          env:
+            - name: FRONTEND_URL
+              value: http://dash-fe.default.svc.cluster.local
+          ports:
+            - containerPort: 3000
+      imagePullSecrets:
+        - name: regcred
+      
+

@@ -8,3 +8,4 @@ export function normalizeAccountName(fullAccountName: string): string {
   }
   return 'unknown';
 }
+ 

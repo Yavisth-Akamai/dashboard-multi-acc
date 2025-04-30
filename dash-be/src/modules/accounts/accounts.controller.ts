@@ -37,5 +37,5 @@ export class AccountsController {
   async removeAccount(@Param('name') name: string) {
     return this.accountsService.removeAccount(name);
   }
-  
+
 }

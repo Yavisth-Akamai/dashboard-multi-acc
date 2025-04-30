@@ -2,7 +2,8 @@ version: '3.8'
 
 services:
   dash-be:
-    image: bpgcstag.azurecr.io/gcbpcicd/dash-be:v0.0.1
+    image: dash-be:v0.0.2
+    platform: linux/amd64
     build:
       context: ./dash-be
     ports:
@@ -18,7 +19,7 @@ services:
       - postgres
 
   dash-fe:
-    image: bpgcstag.azurecr.io/gcbpcicd/dash-fe:v0.0.1
+    image: dash-fe:v0.0.2
     build:
       context: ./dash-fe
     ports:
@@ -28,7 +29,6 @@ services:
       - /app/node_modules
     environment:
       - CHOKIDAR_USEPOLLING=true
-      - REACT_APP_API_URL=http://localhost:3000
     stdin_open: true
     tty: true
     depends_on:

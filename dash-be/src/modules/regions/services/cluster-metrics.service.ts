@@ -44,7 +44,6 @@ export class ClusterMetricsService {
     private readonly httpService: HttpService,
     private readonly accountsService: AccountsService
   ) {}
-
   private determineProfileType(pools: ClusterPool[]): 'D' | 'DHA' | 'S' | 'M' | 'L' {
     const totalNodeCount = pools.reduce((sum, pool) => sum + pool.count, 0);
     
@@ -55,7 +54,7 @@ export class ClusterMetricsService {
     });
     
     const poolMemorySizes = pools.map(pool => getMemorySizeFromInstanceType(pool.type));
-    
+  
     this.logger.debug(`Pool memory sizes: ${poolMemorySizes.join(', ')}`);
     
     const largestMemorySize = Math.max(...poolMemorySizes, 0);

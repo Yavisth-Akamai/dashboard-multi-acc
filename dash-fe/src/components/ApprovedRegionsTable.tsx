@@ -1,5 +1,3 @@
-// dash-fe/src/components/ApprovedRegionsTable.tsx
-
 import React from 'react';
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Typography, styled } from '@mui/material';
 import { ApprovedRegion, ProfileCapacity, ClusterMetric } from '../types/account.types';
@@ -46,68 +44,67 @@ interface AggregatedRegionData {
   isExceeded: boolean;
 }
 
+const profiles = ['D', 'DHA', 'S', 'M', 'L'] as const;
+
 const aggregateRegionData = (approvedRegions: ApprovedRegion[], clusterMetrics: ClusterMetric[]): AggregatedRegionData[] => {
-  const regionMap = new Map<string, AggregatedRegionData>();
+  const regionYearMap = new Map<string, AggregatedRegionData>();
 
   approvedRegions.forEach(row => {
-    const key = row.region;
-    
-    if (regionMap.has(key)) {
-      const existing = regionMap.get(key)!;
+    const key = `${row.region}_${row.year}`;
 
-      Object.keys(row.total_capacity).forEach(profile => {
-        const p = profile as keyof ProfileCapacity;
-        existing.total_capacity[p] += row.total_capacity[p];
-      });
-    } else {
-      regionMap.set(key, {
+    if (!regionYearMap.has(key)) {
+      regionYearMap.set(key, {
         region: row.region,
         year: row.year,
-        total_capacity: { ...row.total_capacity },
+        total_capacity: { D: 0, DHA: 0, S: 0, M: 0, L: 0 },
         current_capacity: { D: 0, DHA: 0, S: 0, M: 0, L: 0 },
         available: { D: 0, DHA: 0, S: 0, M: 0, L: 0 },
-        isExceeded: false
+        isExceeded: false,
       });
+    }
+
+    const existing = regionYearMap.get(key)!;
+    for (const profile of profiles) {
+      existing.total_capacity[profile] += row.total_capacity[profile];
     }
   });
 
-  regionMap.forEach((data, region) => {
+  regionYearMap.forEach(data => {
     const regionClusters = clusterMetrics.filter(cluster => 
-      cluster.region.toLowerCase().includes(region.toLowerCase())
+      cluster.region.toLowerCase().includes(data.region.toLowerCase())
     );
-    
-    regionClusters.forEach(cluster => {
+
+    for (const cluster of regionClusters) {
       if (cluster.profileType) {
         data.current_capacity[cluster.profileType]++;
       } else {
         data.current_capacity.D++;
       }
-    });
-    
-    const isExceeded = Object.keys(data.total_capacity).some(profile => {
-      const p = profile as keyof ProfileCapacity;
-      return data.current_capacity[p] > data.total_capacity[p];
-    });
-    
-    data.isExceeded = isExceeded;
-    
-    Object.keys(data.total_capacity).forEach(profile => {
-      const p = profile as keyof ProfileCapacity;
-      data.available[p] = Math.max(0, data.total_capacity[p] - data.current_capacity[p]);
-    });
+    }
+
+    data.isExceeded = profiles.some(profile => 
+      data.current_capacity[profile] > data.total_capacity[profile]
+    );
+
+    for (const profile of profiles) {
+      data.available[profile] = Math.max(0, data.total_capacity[profile] - data.current_capacity[profile]);
+    }
   });
 
-  return Array.from(regionMap.values());
+  return Array.from(regionYearMap.values());
 };
 
 const ApprovedRegionsTable: React.FC<ApprovedRegionsTableProps> = ({ data, clusterMetrics }) => {
   const profiles = ['D', 'DHA', 'S', 'M', 'L'] as const;
-  const aggregatedData = aggregateRegionData(data, clusterMetrics);
+  const aggregatedData = aggregateRegionData(data, clusterMetrics)
+    .sort((a, b) => Number(b.year) - Number(a.year)); // Sort by year descending
 
   const profileColorMap = PROFILE_COLOR_MAPPINGS.reduce((map, item) => {
     map[item.profile] = item.color;
     return map;
   }, {} as Record<string, string>);
+
+  let lastYear: string | null = null;
 
   return (
     <TableContainer component={Paper} sx={{ marginBottom: 2 }}>
@@ -146,61 +143,73 @@ const ApprovedRegionsTable: React.FC<ApprovedRegionsTableProps> = ({ data, clust
           </TableRow>
         </TableHead>
         <TableBody>
-        {aggregatedData.map((row, rowIndex) => (
-            <StyledBodyRow 
-              key={`${row.region}-${rowIndex}`}
-              isexceeded={row.isExceeded.toString()}
-            >
-              <TableCell>{row.region}</TableCell>
-              <TableCell>{row.year}</TableCell>
-              {profiles.map((profile) => (
-                <StyledBodyCell 
-                  key={`total-${profile}`} 
-                  align="right"
-                  islastincategory={profile === 'L' ? 'true' : 'false'}
-                  sx={{
-                    backgroundColor: row.total_capacity[profile] > 0 ? 
-                      `${profileColorMap[profile]}40` : 
-                      'inherit'
-                  }}
-                >
-                  {row.total_capacity[profile]}
-                </StyledBodyCell>
-              ))}
-              {profiles.map((profile) => (
-                <StyledBodyCell 
-                  key={`current-${profile}`} 
-                  align="right"
-                  islastincategory={profile === 'L' ? 'true' : 'false'}
-                  sx={{
-                    backgroundColor: row.current_capacity[profile] > 0 ? 
-                      `${profileColorMap[profile]}40` : 
-                      'inherit',
-                    fontWeight: row.current_capacity[profile] > row.total_capacity[profile] ? 
-                      'bold' : 'normal',
-                    color: row.current_capacity[profile] > row.total_capacity[profile] ? 
-                      'error.main' : 'text.primary'
-                  }}
-                >
-                  {row.current_capacity[profile]}
-                </StyledBodyCell>
-              ))}
-              {profiles.map((profile) => (
-                <StyledBodyCell 
-                  key={`available-${profile}`} 
-                  align="right"
-                  islastincategory={profile === 'L' ? 'true' : 'false'}
-                  sx={{
-                    backgroundColor: row.available[profile] > 0 ? 
-                      `${profileColorMap[profile]}40` : 
-                      'inherit'
-                  }}
-                >
-                  {row.available[profile]}
-                </StyledBodyCell>
-              ))}
-            </StyledBodyRow>
-          ))}
+          {aggregatedData.map((row, rowIndex) => {
+            const isYearChanged = row.year !== lastYear;
+            lastYear = row.year;
+
+            return (
+              <StyledBodyRow
+                key={`${row.region}-${row.year}-${rowIndex}`}
+                isexceeded={row.isExceeded.toString()}
+                sx={{
+                  backgroundColor: isYearChanged ? 'rgba(0, 0, 255, 0.03)' : 'inherit',
+                  borderTop: isYearChanged ? '2px solid rgba(0,0,0,0.2)' : undefined,
+                }}
+              >
+                <TableCell>{row.region}</TableCell>
+                <TableCell>{row.year}</TableCell>
+
+                {profiles.map(profile => (
+                  <StyledBodyCell
+                    key={`total-${profile}`}
+                    align="right"
+                    islastincategory={profile === 'L' ? 'true' : 'false'}
+                    sx={{
+                      backgroundColor: row.total_capacity[profile] > 0
+                        ? `${profileColorMap[profile]}40`
+                        : 'inherit'
+                    }}
+                  >
+                    {row.total_capacity[profile]}
+                  </StyledBodyCell>
+                ))}
+
+                {profiles.map(profile => (
+                  <StyledBodyCell
+                    key={`current-${profile}`}
+                    align="right"
+                    islastincategory={profile === 'L' ? 'true' : 'false'}
+                    sx={{
+                      backgroundColor: row.current_capacity[profile] > 0
+                        ? `${profileColorMap[profile]}40`
+                        : 'inherit',
+                      fontWeight: row.current_capacity[profile] > row.total_capacity[profile] 
+                        ? 'bold' : 'normal',
+                      color: row.current_capacity[profile] > row.total_capacity[profile] 
+                        ? 'error.main' : 'text.primary'
+                    }}
+                  >
+                    {row.current_capacity[profile]}
+                  </StyledBodyCell>
+                ))}
+
+                {profiles.map(profile => (
+                  <StyledBodyCell
+                    key={`available-${profile}`}
+                    align="right"
+                    islastincategory={profile === 'L' ? 'true' : 'false'}
+                    sx={{
+                      backgroundColor: row.available[profile] > 0
+                        ? `${profileColorMap[profile]}40`
+                        : 'inherit'
+                    }}
+                  >
+                    {row.available[profile]}
+                  </StyledBodyCell>
+                ))}
+              </StyledBodyRow>
+            );
+          })}
         </TableBody>
       </Table>
     </TableContainer>

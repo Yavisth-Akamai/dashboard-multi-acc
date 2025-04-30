@@ -1,5 +1,3 @@
-// dash-fe/src/utils/instance-type-mapping.ts
-
 export interface InstanceTypeMapping {
     id: string;
     memorySizeGB: number;

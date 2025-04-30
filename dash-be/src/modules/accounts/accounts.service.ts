@@ -5,7 +5,7 @@ import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { AccountEntity } from './entities/account.entity';
 import { ACCOUNT_NAME_MAPPINGS } from '../../common/config/account-mapping.config';
-import { normalizeAccountName } from '../../common/utils/account-normalizer';
+import { normalizeAccountName } from '../../common/utils/account-normalizer.util';
 interface LinodeAccountInfo {
   email: string;
   company?: string;

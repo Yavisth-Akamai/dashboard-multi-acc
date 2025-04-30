@@ -7,8 +7,8 @@ import Redis from 'ioredis';
       provide: 'REDIS_CLIENT',
       useFactory: () => {
         return new Redis({
-          host: 'redis',
-          port: 6379,
+          host: process.env.REDIS_HOST || 'localhost',
+          port: Number(process.env.REDIS_PORT) || 6379,
         });
       },
     },

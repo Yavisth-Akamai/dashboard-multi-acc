@@ -11,4 +11,5 @@ export function normalizeAccountName(raw: string): string {
 
   const matched = patterns.find(p => p.regex.test(raw.trim()));
   return matched ? matched.transform : raw.split('-').slice(1).join('_').toLowerCase();
+  
 }

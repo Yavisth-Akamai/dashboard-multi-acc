@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 import { ProfileCapacity, ExcelData } from '../../../common/interfaces/region.interface';
 import { determineProfileType } from '../../../common/constants/instance-type-mapping.constant';
 import { ACCOUNT_NAME_MAPPINGS } from '../../../common/config/account-mapping.config';
-import { normalizeAccountName } from '../../../common/utils/account-normalizer';
+import { normalizeAccountName } from '../../../common/utils/account-normalizer.util';
 
 
 

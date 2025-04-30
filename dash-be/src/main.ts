@@ -3,16 +3,18 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    logger: ['error', 'warn', 'debug', 'log', 'verbose'], // Enable all log levels
+    logger: ['error', 'warn', 'debug', 'log', 'verbose'],
   });
-  
-  
-  // Enable CORS
+
+  const allowedOrigin = process.env.FRONTEND_URL || 'http://localhost:3001';
+
   app.enableCors({
-    origin: 'http://localhost:3001',
+    origin: allowedOrigin,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
+
+  console.log(`CORS allowed for origin: ${allowedOrigin}`);
 
   await app.listen(3000);
 }
