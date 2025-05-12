@@ -8,6 +8,7 @@ import { ClusterMetricResponse, ClusterMetric } from '../../../common/interfaces
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AccountEntity } from '../../accounts/entities/account.entity';
+import { normalizeAccountName } from '../../../common/utils/account-normalizer.util';
 import { 
   ApprovedRegion, 
   UnapprovedRegion, 
@@ -107,18 +108,20 @@ export class RegionsService {
     try {
       const excelData = await this.excelService.getApprovedRegions();
       const validEntities: Partial<ApprovedRegionEntity>[] = [];
-
+  
       for (const data of excelData) {
-        const accountEntity = await this.accountRepository.findOne({ 
-          where: { name: data.accountName } 
+        const normalizedName = normalizeAccountName(data.accountName);
+        const accountEntity = await this.accountRepository.findOne({
+          where: { name: normalizedName }
         });
-        console.log('Trying to find account for:', data.accountName);
-
+      
+        this.logger.log(`Trying to find account for: ${data.accountName} (normalized: ${normalizedName})`);
+      
         if (!accountEntity) continue;
-
+      
         const totalCapacitySum = Object.values(data.total_capacity as ProfileCapacity)
           .reduce((sum: number, val: number) => sum + val, 0);
-
+      
         validEntities.push({
           region: data.region as string,
           year: data.year as string,
@@ -133,7 +136,8 @@ export class RegionsService {
           account: accountEntity
         });
       }
-
+      
+  
       if (validEntities.length > 0) {
         await this.approvedRegionRepository.clear();
         await this.approvedRegionRepository.save(validEntities);
@@ -143,6 +147,7 @@ export class RegionsService {
       throw new Error(`Failed to sync approved regions: ${error.message}`);
     }
   }
+  
 
   private async invalidateCache(): Promise<void> {
     await this.redisClient.del('approved_regions');

@@ -4,8 +4,8 @@ import { Repository } from 'typeorm';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { AccountEntity } from './entities/account.entity';
-import { ACCOUNT_NAME_MAPPINGS } from '../../common/config/account-mapping.config';
 import { normalizeAccountName } from '../../common/utils/account-normalizer.util';
+
 interface LinodeAccountInfo {
   email: string;
   company?: string;
@@ -25,84 +25,73 @@ export class AccountsService {
 
   constructor(
     @InjectRepository(AccountEntity)
-    private accountRepository: Repository<AccountEntity>,
+    private readonly accountRepository: Repository<AccountEntity>,
     private readonly httpService: HttpService
   ) {}
 
-  async validateAndFetchAccountInfo(token: string): Promise<{ accountInfo: LinodeAccountInfo; profileInfo: LinodeProfileInfo }> {
-    try {
-      const [accountResponse, profileResponse] = await Promise.all([
-        firstValueFrom(
-          this.httpService.get(`${this.linodeApiUrl}/account`, {
-            headers: { Authorization: `Bearer ${token}` }
-          })
-        ),
-        firstValueFrom(
-          this.httpService.get(`${this.linodeApiUrl}/profile`, {
-            headers: { Authorization: `Bearer ${token}` }
-          })
-        )
-      ]);
+  async addAccount(token: string, overrideName?: string): Promise<AccountEntity> {
 
+    let accountName: string;
+    if (overrideName && overrideName.trim()) {
+      accountName = overrideName.trim();
+      this.logger.debug(`Using override account name: ${accountName}`);
+    } else {
+
+      const { accountInfo, profileInfo } = await this.validateAndFetchAccountInfo(token);
+      accountName = this.generateAccountName(profileInfo, accountInfo);
+      this.logger.debug(`Fetched & normalized account name: ${accountName}`);
+    }
+
+
+    const existing = await this.accountRepository.findOne({
+      where: { name: accountName },
+    });
+
+    if (existing) {
+      if (existing.isActive) {
+        throw new ConflictException(`Account ${accountName} already exists`);
+      }
+
+      existing.token = token;
+      existing.isActive = true;
+      return this.accountRepository.save(existing);
+    }
+
+
+    const account = this.accountRepository.create({
+      name: accountName,
+      token,
+      isActive: true,
+    });
+    return this.accountRepository.save(account);
+  }
+
+
+  private async validateAndFetchAccountInfo(token: string) {
+    try {
+      const [acctRes, profRes] = await Promise.all([
+        firstValueFrom(this.httpService.get(`${this.linodeApiUrl}/account`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })),
+        firstValueFrom(this.httpService.get(`${this.linodeApiUrl}/profile`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }))
+      ]);
       return {
-        accountInfo: accountResponse.data,
-        profileInfo: profileResponse.data
+        accountInfo: acctRes.data as LinodeAccountInfo,
+        profileInfo: profRes.data as LinodeProfileInfo,
       };
-    } catch (error) {
-      this.logger.error('Error validating Linode token:', error);
+    } catch (err) {
+      this.logger.error('Error validating Linode token:', err);
       throw new Error('Invalid Linode token or API error');
     }
   }
 
-  async addAccount(token: string): Promise<AccountEntity> {
-    try {
 
-      const { accountInfo, profileInfo } = await this.validateAndFetchAccountInfo(token);
-      console.log('Account Info:', accountInfo);
-      console.log('Profile Info:', profileInfo);
-
-      const accountName = this.generateAccountName(profileInfo, accountInfo);
-      console.log('Generated Account Name:', accountName);
-
-
-      const existingAccount = await this.accountRepository.findOne({ 
-        where: { token } 
-      });
-
-      if (existingAccount) {
-        if (existingAccount.isActive) {
-          throw new ConflictException(`Account ${accountName} already exists`);
-        } else {
-
-          existingAccount.token = token;
-          existingAccount.isActive = true;
-          return this.accountRepository.save(existingAccount);
-        }
-      }
-
-
-      const account = this.accountRepository.create({
-        name: accountName,
-        token,
-        isActive: true,
-      });
-      
-      return this.accountRepository.save(account);
-    } catch (error) {
-      this.logger.error(`Error adding account:`, error);
-      if (error instanceof ConflictException) {
-        throw error;
-      }
-      throw new Error(`Failed to add account: ${error.message}`);
-    }
-  }
- 
   private generateAccountName(profileInfo: LinodeProfileInfo, accountInfo: LinodeAccountInfo): string {
-    if (accountInfo.company) {
-      const raw = profileInfo.username; 
-      return normalizeAccountName(raw); 
-    }
-    return normalizeAccountName(profileInfo.username);
+    const raw = profileInfo.username;
+    if (/.*-poc$/.test(raw) || /.*-team-.*-poc$/.test(raw)) return 'poc';
+    return normalizeAccountName(raw);
   }
 
   async getAccounts(): Promise<AccountEntity[]> {
@@ -110,16 +99,13 @@ export class AccountsService {
   }
 
   async getAccountToken(name: string): Promise<string | null> {
-    const account = await this.accountRepository.findOne({ 
-      where: { name, isActive: true } 
+    const acct = await this.accountRepository.findOne({
+      where: { name, isActive: true },
     });
-    return account?.token || null;
+    return acct?.token || null;
   }
 
   async removeAccount(name: string): Promise<void> {
-    await this.accountRepository.update(
-      { name },
-      { isActive: false }
-    );
+    await this.accountRepository.update({ name }, { isActive: false });
   }
 }

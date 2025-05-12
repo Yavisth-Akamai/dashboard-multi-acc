@@ -1,0 +1,28 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-job
+spec:
+  template:
+    spec:
+      containers:
+        - name: init-script
+          image: curlimages/curl:8.5.0
+          command: ["/bin/sh", "-c"]
+          args: ["/scripts/init-job.sh"]
+          volumeMounts:
+            - name: dash-init-scripts
+              mountPath: /scripts
+              readOnly: true
+            - name: dash-account-secrets
+              mountPath: /secrets
+              readOnly: true
+      volumes:
+        - name: dash-init-scripts
+          configMap:
+            name: dash-init-script
+        - name: dash-account-secrets
+          secret:
+            secretName: dash-account-secrets
+      restartPolicy: Never
+  backoffLimit: 3

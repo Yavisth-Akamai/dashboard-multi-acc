@@ -53,8 +53,11 @@ export class ExcelService {
 
   private transformAccountName(fullAccountName: string | null): string {
     if (!fullAccountName) return 'unknown';
-    return normalizeAccountName(fullAccountName);
+    const name = fullAccountName.trim();
+
+    return normalizeAccountName(name);
   }
+  
 
   async getApprovedRegions(): Promise<ExcelData[]> {
     try {

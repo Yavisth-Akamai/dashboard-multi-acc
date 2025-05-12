@@ -1,44 +1,32 @@
 import { createTheme } from '@mui/material/styles';
 
 const theme = createTheme({
-  palette: {
-    mode: 'dark',
-    background: {
-      default: '#121212',
-      paper: '#1e1e1e',
-    },
-    primary: {
-      main: '#64b5f6',
-    },
-    secondary: {
-      main: '#ff4081',
-    },
-    text: {
-      primary: '#ffffff',
-      secondary: '#aaaaaa',
-    },
-  },
   typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-    fontSize: 13,
-  },
-  components: {
-    MuiTableRow: {
-      styleOverrides: {
-        root: {
-          transition: 'background-color 0.2s ease',
-          '&:hover': {
-            backgroundColor: '#2a2a2a',
-          },
-        },
-      },
+    fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    fontSize: 14,
+    h1: {
+      fontSize: '2rem',
+      fontWeight: 600,
     },
-    MuiTableCell: {
-      styleOverrides: {
-        root: {
-          borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
-        },
-      },
+    h2: {
+      fontSize: '1.75rem',
+      fontWeight: 600,
+    },
+    h3: {
+      fontSize: '1.5rem',
+      fontWeight: 500,
+    },
+    body1: {
+      fontSize: '1rem',
+      fontWeight: 400,
+    },
+    body2: {
+      fontSize: '0.875rem',
+      fontWeight: 400,
+    },
+    caption: {
+      fontSize: '0.75rem',
+      color: '#888',
     },
   },
 });
