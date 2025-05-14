@@ -4,8 +4,11 @@ import { ApprovedRegion, ProfileCapacity, ClusterMetric } from '../types/account
 import { PROFILE_COLOR_MAPPINGS } from '../config/profile-colors.config';
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
-  backgroundColor: theme.palette.grey[100],
-  fontWeight: 'bold',
+  backgroundColor: theme.palette.background.paper,
+  fontWeight: 600,
+  fontSize: '0.875rem',
+  color: theme.palette.text.primary,
+  borderBottom: `2px solid ${theme.palette.divider}`,
   '&.category-header': {
     borderLeft: `2px solid ${theme.palette.divider}`,
     borderRight: `2px solid ${theme.palette.divider}`,
@@ -18,15 +21,20 @@ const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
   }
 }));
 
-const StyledBodyCell = styled(TableCell)<{ islastincategory?: string }>(({ theme, islastincategory }) => ({
-  ...(islastincategory === 'true' && {
-    borderRight: `3px solid rgba(0, 0, 0, 0.3)`,
-  }),
+const StyledBodyRow = styled(TableRow)<{ isexceeded?: string }>(({ theme }) => ({
+  transition: 'background-color 0.2s ease',
+  '&:hover': {
+    backgroundColor: theme.palette.action.hover,
+  },
 }));
 
-const StyledBodyRow = styled(TableRow)<{ isexceeded?: string }>(({ theme, isexceeded }) => ({
-  ...(isexceeded === 'true' && {
-    backgroundColor: '#ffebee',
+
+
+const StyledBodyCell = styled(TableCell)<{ islastincategory?: string }>(({ theme, islastincategory }) => ({
+  padding: theme.spacing(1.25),
+  borderBottom: `1px solid ${theme.palette.divider}`,
+  ...(islastincategory === 'true' && {
+    borderRight: `2px solid ${theme.palette.divider}`,
   }),
 }));
 
@@ -97,7 +105,7 @@ const aggregateRegionData = (approvedRegions: ApprovedRegion[], clusterMetrics: 
 const ApprovedRegionsTable: React.FC<ApprovedRegionsTableProps> = ({ data, clusterMetrics }) => {
   const profiles = ['D', 'DHA', 'S', 'M', 'L'] as const;
   const aggregatedData = aggregateRegionData(data, clusterMetrics)
-    .sort((a, b) => Number(b.year) - Number(a.year)); // Sort by year descending
+    .sort((a, b) => Number(b.year) - Number(a.year));
 
   const profileColorMap = PROFILE_COLOR_MAPPINGS.reduce((map, item) => {
     map[item.profile] = item.color;
@@ -107,10 +115,33 @@ const ApprovedRegionsTable: React.FC<ApprovedRegionsTableProps> = ({ data, clust
   let lastYear: string | null = null;
 
   return (
-    <TableContainer component={Paper} sx={{ marginBottom: 2 }}>
-      <Typography variant="h6" sx={{ padding: 1 }}>Approved Region Capacity</Typography>
+    <TableContainer
+  component={Paper}
+  elevation={0}
+  sx={{
+    border: '1px solid',
+    borderColor: 'divider',
+    borderRadius: 2,
+    mb: 3,
+    maxHeight: 600,
+    overflow: 'auto',
+  }}
+>
+  <Typography
+    variant="subtitle1"
+    sx={{
+      px: 2,
+      py: 1.5,
+      borderBottom: '1px solid',
+      borderColor: 'divider',
+      fontWeight: 600,
+      color: 'text.primary',
+    }}
+  >
+    Approved Region Capacity
+  </Typography>
       <Table>
-        <TableHead>
+      <TableHead sx={{ position: 'sticky', top: 0, zIndex: 1, backgroundColor: theme => theme.palette.background.paper }}>
           <TableRow>
             <StyledHeaderCell rowSpan={2} className="region-header">Region</StyledHeaderCell>
             <StyledHeaderCell rowSpan={2} className="region-header">Year</StyledHeaderCell>
@@ -125,92 +156,125 @@ const ApprovedRegionsTable: React.FC<ApprovedRegionsTableProps> = ({ data, clust
             </StyledHeaderCell>
           </TableRow>
           <TableRow>
-            {[...Array(3)].map((_, i) => (
-              profiles.map(profile => (
-                <StyledHeaderCell
-                  key={`${i}-${profile}`}
-                  align="right"
-                  className="sub-header"
-                  sx={{
-                    backgroundColor: profileColorMap[profile] || '#ffffff',
-                    color: 'rgba(0, 0, 0, 0.87)'
-                  }}
-                >
-                  {profile}
-                </StyledHeaderCell>
-              ))
-            ))}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {aggregatedData.map((row, rowIndex) => {
-            const isYearChanged = row.year !== lastYear;
-            lastYear = row.year;
-
-            return (
-              <StyledBodyRow
-                key={`${row.region}-${row.year}-${rowIndex}`}
-                isexceeded={row.isExceeded.toString()}
+          {[...Array(3)].map((_, groupIndex) =>
+            profiles.map(profile => (
+              <StyledHeaderCell
+                key={`${groupIndex}-${profile}`}
+                align="center"
+                className="sub-header"
                 sx={{
-                  backgroundColor: isYearChanged ? 'rgba(0, 0, 255, 0.03)' : 'inherit',
-                  borderTop: isYearChanged ? '2px solid rgba(0,0,0,0.2)' : undefined,
+                  width: 64,
+                  backgroundColor: `${profileColorMap[profile]}70`,
+                  color: theme => theme.palette.getContrastText(profileColorMap[profile]),
+                  fontWeight: 500,
+                  fontSize: '0.75rem',
+                  borderRight: profile === 'L' ? `2px solid ${(theme: { palette: { divider: any; }; }) => theme.palette.divider}` : undefined,
                 }}
               >
-                <TableCell>{row.region}</TableCell>
-                <TableCell>{row.year}</TableCell>
+                {profile}
+              </StyledHeaderCell>
+            ))
+          )}
+        </TableRow>
 
-                {profiles.map(profile => (
-                  <StyledBodyCell
-                    key={`total-${profile}`}
-                    align="right"
-                    islastincategory={profile === 'L' ? 'true' : 'false'}
-                    sx={{
-                      backgroundColor: row.total_capacity[profile] > 0
-                        ? `${profileColorMap[profile]}40`
-                        : 'inherit'
-                    }}
-                  >
-                    {row.total_capacity[profile]}
-                  </StyledBodyCell>
-                ))}
+        </TableHead>
+        <TableBody>
+  {aggregatedData.map((row, index) => {
+    const isOddRow = index % 2 === 0;
 
-                {profiles.map(profile => (
-                  <StyledBodyCell
-                    key={`current-${profile}`}
-                    align="right"
-                    islastincategory={profile === 'L' ? 'true' : 'false'}
-                    sx={{
-                      backgroundColor: row.current_capacity[profile] > 0
-                        ? `${profileColorMap[profile]}40`
-                        : 'inherit',
-                      fontWeight: row.current_capacity[profile] > row.total_capacity[profile] 
-                        ? 'bold' : 'normal',
-                      color: row.current_capacity[profile] > row.total_capacity[profile] 
-                        ? 'error.main' : 'text.primary'
-                    }}
-                  >
-                    {row.current_capacity[profile]}
-                  </StyledBodyCell>
-                ))}
+    return (
+      <StyledBodyRow
+        key={`${row.region}-${row.year}-${index}`}
+        isexceeded={row.isExceeded.toString()}
+        sx={{
+          backgroundColor: isOddRow
+          ? theme => `${theme.palette.action.hover}20`
+          : 'inherit',
+        }}
+      >
+        <StyledBodyCell
+  component="th"
+  scope="row"
+  sx={{
+    position: 'relative',
+    pl: 2.5,
+    '&::before': row.isExceeded
+      ? {
+          content: '""',
+          position: 'absolute',
+          left: 0,
+          top: 4,
+          bottom: 4,
+          width: '4px',
+          borderRadius: '4px',
+          backgroundColor: theme => theme.palette.error.main,
+        }
+      : undefined,
+  }}
+>
+  {row.region}
+</StyledBodyCell>
 
-                {profiles.map(profile => (
-                  <StyledBodyCell
-                    key={`available-${profile}`}
-                    align="right"
-                    islastincategory={profile === 'L' ? 'true' : 'false'}
-                    sx={{
-                      backgroundColor: row.available[profile] > 0
-                        ? `${profileColorMap[profile]}40`
-                        : 'inherit'
-                    }}
-                  >
-                    {row.available[profile]}
-                  </StyledBodyCell>
-                ))}
-              </StyledBodyRow>
-            );
-          })}
-        </TableBody>
+        <TableCell>{row.year}</TableCell>
+
+        {profiles.map(profile => (
+          <StyledBodyCell
+            key={`total-${index}-${profile}`}
+            align="right"
+            islastincategory={profile === 'L' ? 'true' : 'false'}
+            sx={{
+              backgroundColor: row.total_capacity[profile] > 0
+                ? `${profileColorMap[profile]}40`
+                : 'inherit'
+            }}
+          >
+            {row.total_capacity[profile]}
+          </StyledBodyCell>
+        ))}
+
+        {profiles.map(profile => {
+          const exceeded = row.current_capacity[profile] > row.total_capacity[profile];
+          return (
+            <StyledBodyCell
+              key={`current-${index}-${profile}`}
+              align="right"
+              islastincategory={profile === 'L' ? 'true' : 'false'}
+              sx={{
+                backgroundColor: row.current_capacity[profile] > 0
+                  ? `${profileColorMap[profile]}40`
+                  : 'inherit',
+                fontWeight: exceeded ? 'bold' : 'normal',
+                color: exceeded ? 'error.main' : 'text.primary'
+              }}
+            >
+              {row.current_capacity[profile]}
+            </StyledBodyCell>
+          );
+        })}
+
+        {profiles.map(profile => (
+          <StyledBodyCell
+            key={`available-${index}-${profile}`}
+            align="right"
+            islastincategory={profile === 'L' ? 'true' : 'false'}
+            sx={{
+              backgroundColor: row.available[profile] > 0
+                ? `${profileColorMap[profile]}40`
+                : 'inherit',
+              color: row.available[profile] > 0
+                ? theme => theme.palette.success.main
+                : 'inherit',
+              fontWeight: row.available[profile] > 0 ? 500 : 'normal'
+            }}
+          >
+            {row.available[profile]}
+          </StyledBodyCell>
+        ))}
+      </StyledBodyRow>
+    );
+  })}
+</TableBody>
+
       </Table>
     </TableContainer>
   );

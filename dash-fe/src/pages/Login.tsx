@@ -28,25 +28,45 @@ const Login: React.FC = () => {
   };
 
   return (
-    <Box 
+    <Box
       display="flex"
       justifyContent="center"
       alignItems="center"
       height="100vh"
+      sx={{ backgroundColor: 'background.default', px: 2 }}
     >
-      <Paper elevation={4} sx={{ p: 4, width: 400 }}>
-        <Typography variant="h5" textAlign="center" mb={3}>
+      <Paper
+        elevation={0}
+        sx={{
+          px: 4,
+          py: 5,
+          border: '1px solid',
+          borderColor: 'divider',
+          borderRadius: 2,
+          width: '100%',
+          maxWidth: 400,
+        }}
+      >
+        <Typography
+          variant="h6"
+          fontWeight={600}
+          textAlign="center"
+          color="text.primary"
+          mb={3}
+        >
           Login
         </Typography>
+  
         <form onSubmit={handleSubmit}>
           <TextField
-            label="Email"
+            label="username"
             variant="outlined"
             fullWidth
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             margin="normal"
+            size="small"
           />
           <TextField
             label="Password"
@@ -57,26 +77,35 @@ const Login: React.FC = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             margin="normal"
+            size="small"
           />
+  
           {error && (
-            <Typography variant="body2" color="error" mt={1} mb={1}>
+            <Typography
+              variant="body2"
+              color="error"
+              mt={1}
+              mb={1}
+              textAlign="center"
+            >
               {error}
             </Typography>
           )}
+  
           <Button
             type="submit"
             variant="contained"
-            color="primary"
             fullWidth
-            sx={{ mt: 2 }}
+            sx={{ mt: 2, py: 1 }}
             disabled={loading}
           >
-            {loading ? <CircularProgress size={24} /> : 'Login'}
+            {loading ? <CircularProgress size={20} /> : 'Login'}
           </Button>
         </form>
-
-        {/* <Typography variant="body2" textAlign="center" mt={2}>
-          Don't have an account?{' '}
+  
+        {/* Optional sign up prompt */}
+        {/* <Typography variant="caption" textAlign="center" display="block" mt={2}>
+          Don’t have an account?{' '}
           <Link href="/signup" underline="hover">
             Sign Up
           </Link>
@@ -84,6 +113,7 @@ const Login: React.FC = () => {
       </Paper>
     </Box>
   );
+  
 };
 
 export default Login;

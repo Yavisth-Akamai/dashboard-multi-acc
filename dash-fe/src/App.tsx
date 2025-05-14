@@ -4,7 +4,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
-// import Signup from './pages/Signup';
+import { getTheme } from './theme';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
 const AppContent: React.FC<{ darkMode: boolean; onDarkModeChange: () => void }> = ({ darkMode, onDarkModeChange }) => {
@@ -23,15 +23,7 @@ const AppContent: React.FC<{ darkMode: boolean; onDarkModeChange: () => void }> 
 const App: React.FC = () => {
   const [darkMode, setDarkMode] = useState(false);
 
-  const theme = useMemo(
-    () =>
-      createTheme({
-        palette: {
-          mode: darkMode ? 'dark' : 'light',
-        },
-      }),
-    [darkMode]
-  );
+  const theme = useMemo(() => getTheme(darkMode ? 'dark' : 'light'), [darkMode]);
 
   return (
     <ThemeProvider theme={theme}>

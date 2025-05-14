@@ -10,7 +10,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const AUTH_TOKEN_KEY = 'auth_token';
-const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
+const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [token, setToken] = useState<string | null>(null);

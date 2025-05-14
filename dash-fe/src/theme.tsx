@@ -1,34 +1,42 @@
-import { createTheme } from '@mui/material/styles';
+import { createTheme, responsiveFontSizes } from '@mui/material/styles';
 
-const theme = createTheme({
+const baseTheme = (mode: 'light' | 'dark') => createTheme({
+  palette: {
+    mode,
+    primary: {
+      main: mode === 'light' ? '#0d47a1' : '#90caf9',
+    },
+    secondary: {
+      main: mode === 'light' ? '#f50057' : '#f48fb1',
+    },
+    background: {
+      default: mode === 'light' ? '#fafafa' : '#121212',
+      paper: mode === 'light' ? '#fff' : '#1e1e1e',
+    },
+  },
   typography: {
-    fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-    fontSize: 14,
-    h1: {
-      fontSize: '2rem',
+    fontFamily: ['"Inter"', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'].join(','),
+    fontSize: 13,
+    h6: {
       fontWeight: 600,
+    }
+  },
+  components: {
+    MuiTableCell: {
+      styleOverrides: {
+        root: {
+          padding: '6px 12px',
+        },
+      },
     },
-    h2: {
-      fontSize: '1.75rem',
-      fontWeight: 600,
-    },
-    h3: {
-      fontSize: '1.5rem',
-      fontWeight: 500,
-    },
-    body1: {
-      fontSize: '1rem',
-      fontWeight: 400,
-    },
-    body2: {
-      fontSize: '0.875rem',
-      fontWeight: 400,
-    },
-    caption: {
-      fontSize: '0.75rem',
-      color: '#888',
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+        },
+      },
     },
   },
 });
 
-export default theme;
+export const getTheme = (mode: 'light' | 'dark') => responsiveFontSizes(baseTheme(mode));

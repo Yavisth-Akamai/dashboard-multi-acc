@@ -2,22 +2,36 @@ import React from 'react';
 import {
   Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, Typography, Chip, styled,
-  Tooltip 
+  Tooltip
 } from '@mui/material';
 import { ClusterMetric } from '../types/account.types';
 import { PROFILE_COLOR_MAPPINGS } from '../config/profile-colors.config';
-import { 
-  getMemorySizeFromInstanceType, 
-  getDescriptionFromInstanceType 
+import {
+  getMemorySizeFromInstanceType,
+  getDescriptionFromInstanceType
 } from '../utils/instance-type-mapping';
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
-  backgroundColor: theme.palette.grey[100],
-  fontWeight: 'bold',
+  backgroundColor: theme.palette.background.default,
+  fontWeight: 600,
+  color: theme.palette.text.primary,
+  fontSize: '0.85rem',
+  padding: '10px 12px',
+  borderBottom: `1px solid ${theme.palette.divider}`,
+}));
+
+const StyledCell = styled(TableCell)(({ theme }) => ({
+  fontSize: '0.825rem',
+  padding: '8px 12px',
+  color: theme.palette.text.primary,
 }));
 
 const ProfileChip = styled(Chip)(({ theme }) => ({
-  fontWeight: 'bold',
+  fontWeight: 500,
+  fontSize: '0.75rem',
+  borderRadius: '6px',
+  padding: '0 6px',
+  color: theme.palette.getContrastText(theme.palette.background.paper),
 }));
 
 interface ClusterMetricsTableProps {
@@ -34,7 +48,7 @@ const ClusterMetricsTable: React.FC<ClusterMetricsTableProps> = ({ data }) => {
     if (!cluster.pools || cluster.pools.length === 0) {
       return 'No pool information available';
     }
-    
+
     return (
       <div>
         <div><strong>Profile Type:</strong> {cluster.profileType}</div>
@@ -44,7 +58,7 @@ const ClusterMetricsTable: React.FC<ClusterMetricsTableProps> = ({ data }) => {
           {cluster.pools.map((pool, index) => {
             const memorySize = getMemorySizeFromInstanceType(pool.type);
             const description = getDescriptionFromInstanceType(pool.type);
-            
+
             return (
               <li key={index}>
                 Type: {pool.type} ({description}, {memorySize}GB), Count: {pool.count}
@@ -57,9 +71,21 @@ const ClusterMetricsTable: React.FC<ClusterMetricsTableProps> = ({ data }) => {
   };
 
   return (
-    <TableContainer component={Paper} sx={{ marginBottom: 2 }}>
-      <Typography variant="h6" sx={{ padding: 1 }}>Cluster Metrics</Typography>
-      <Table>
+    <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, mb: 3 }}>
+      <Typography
+        variant="subtitle1"
+        sx={{
+          px: 2,
+          py: 1.5,
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          fontWeight: 600,
+          color: 'text.primary'
+        }}
+      >
+        Cluster Metrics
+      </Typography>
+      <Table size="small">
         <TableHead>
           <TableRow>
             <StyledHeaderCell>Cluster Name</StyledHeaderCell>
@@ -71,35 +97,36 @@ const ClusterMetricsTable: React.FC<ClusterMetricsTableProps> = ({ data }) => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {data && data.length > 0 ? (
+          {data?.length > 0 ? (
             data.map((row, index) => (
               <TableRow key={index}>
-                <TableCell>{row.name}</TableCell>
-                <TableCell>{row.region}</TableCell>
-                <TableCell>
-                  <Tooltip 
-                    title={generateTooltip(row)} 
-                    arrow
-                    placement="right"
-                  >
-                    <ProfileChip
-                      label={row.profileType || 'D'}
-                      size="small"
-                      style={{ 
-                        backgroundColor: profileColorMap[row.profileType || 'D'] || profileColorMap.D,
-                        color: 'rgba(0, 0, 0, 0.87)'
-                      }}
-                    />
+                <StyledCell>{row.name}</StyledCell>
+                <StyledCell>{row.region}</StyledCell>
+                <StyledCell>
+                  <Tooltip title={generateTooltip(row)} arrow enterDelay={500}>
+                  <ProfileChip
+                    label={row.profileType || 'D'}
+                    size="small"
+                    sx={(theme) => {
+                      const bg = profileColorMap[row.profileType || 'D'] || profileColorMap.D;
+                      return {
+                        backgroundColor: bg,
+                        color: theme.palette.getContrastText(bg),
+                      };
+                    }}
+                  />
                   </Tooltip>
-                </TableCell>
-                <TableCell>{row.totalNodeCount || 'N/A'}</TableCell>
-                <TableCell>{row.status}</TableCell>
-                <TableCell>{new Date(row.created).toLocaleString()}</TableCell>
+                </StyledCell>
+                <StyledCell>{row.totalNodeCount || 'N/A'}</StyledCell>
+                <StyledCell>{row.status}</StyledCell>
+                <StyledCell>{new Date(row.created).toLocaleString()}</StyledCell>
               </TableRow>
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={6} align="center">No clusters found</TableCell>
+              <StyledCell colSpan={6} align="center">
+                No clusters found.
+              </StyledCell>
             </TableRow>
           )}
         </TableBody>
