@@ -10,6 +10,7 @@ import {
   getMemorySizeFromInstanceType,
   getDescriptionFromInstanceType
 } from '../utils/instance-type-mapping';
+import { formatRegionName } from '../utils/formatters';
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
   backgroundColor: theme.palette.background.default,
@@ -48,7 +49,6 @@ const ClusterMetricsTable: React.FC<ClusterMetricsTableProps> = ({ data }) => {
     if (!cluster.pools || cluster.pools.length === 0) {
       return 'No pool information available';
     }
-
     return (
       <div>
         <div><strong>Profile Type:</strong> {cluster.profileType}</div>
@@ -58,7 +58,6 @@ const ClusterMetricsTable: React.FC<ClusterMetricsTableProps> = ({ data }) => {
           {cluster.pools.map((pool, index) => {
             const memorySize = getMemorySizeFromInstanceType(pool.type);
             const description = getDescriptionFromInstanceType(pool.type);
-
             return (
               <li key={index}>
                 Type: {pool.type} ({description}, {memorySize}GB), Count: {pool.count}
@@ -101,20 +100,20 @@ const ClusterMetricsTable: React.FC<ClusterMetricsTableProps> = ({ data }) => {
             data.map((row, index) => (
               <TableRow key={index}>
                 <StyledCell>{row.name}</StyledCell>
-                <StyledCell>{row.region}</StyledCell>
+                <StyledCell>{formatRegionName(row.region)}</StyledCell>
                 <StyledCell>
                   <Tooltip title={generateTooltip(row)} arrow enterDelay={500}>
-                  <ProfileChip
-                    label={row.profileType || 'D'}
-                    size="small"
-                    sx={(theme) => {
-                      const bg = profileColorMap[row.profileType || 'D'] || profileColorMap.D;
-                      return {
-                        backgroundColor: bg,
-                        color: theme.palette.getContrastText(bg),
-                      };
-                    }}
-                  />
+                    <ProfileChip
+                      label={row.profileType || 'D'}
+                      size="small"
+                      sx={theme => {
+                        const bg = profileColorMap[row.profileType || 'D'] || profileColorMap.D;
+                        return {
+                          backgroundColor: bg,
+                          color: theme.palette.getContrastText(bg),
+                        };
+                      }}
+                    />
                   </Tooltip>
                 </StyledCell>
                 <StyledCell>{row.totalNodeCount || 'N/A'}</StyledCell>

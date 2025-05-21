@@ -1,10 +1,19 @@
 import React from 'react';
 import {
-  Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Paper, Typography, Chip, styled,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Typography,
+  Chip,
+  styled,
 } from '@mui/material';
 import { ClusterMetric, ApprovedRegion } from '../types/account.types';
 import { PROFILE_COLOR_MAPPINGS } from '../config/profile-colors.config';
+import { formatRegionName } from '../utils/formatters';
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
   backgroundColor: theme.palette.background.default,
@@ -104,29 +113,29 @@ const UnapprovedRegionsTable: React.FC<UnapprovedRegionsTableProps> = ({ data, a
         </TableHead>
         <TableBody>
           {unapprovedData.length > 0 ? (
-            unapprovedData.map((row) => (
+            unapprovedData.map(row => (
               <TableRow
                 key={row.region}
                 sx={{
                   '&:nth-of-type(odd)': { backgroundColor: 'action.hover' },
                 }}
               >
-                <StyledCell>{row.region}</StyledCell>
+                <StyledCell>{formatRegionName(row.region)}</StyledCell>
                 <StyledCell>
-                {Object.entries(row.profiles).map(([profile, count]) => (
-                  <ProfileChip
-                    key={`${row.region}-${profile}`}
-                    label={`${profile}: ${count}`}
-                    size="small"
-                    sx={(theme) => {
-                      const bg = profileColorMap[profile] || profileColorMap.D;
-                      return {
-                        backgroundColor: bg,
-                        color: theme.palette.getContrastText(bg),
-                      };
-                    }}
-                  />
-                ))}
+                  {Object.entries(row.profiles).map(([profile, count]) => (
+                    <ProfileChip
+                      key={`${row.region}-${profile}`}
+                      label={`${profile}: ${count}`}
+                      size="small"
+                      sx={theme => {
+                        const bg = profileColorMap[profile] || profileColorMap.D;
+                        return {
+                          backgroundColor: bg,
+                          color: theme.palette.getContrastText(bg),
+                        };
+                      }}
+                    />
+                  ))}
                 </StyledCell>
               </TableRow>
             ))

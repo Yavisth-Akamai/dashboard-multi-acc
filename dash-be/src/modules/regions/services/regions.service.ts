@@ -1,20 +1,23 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+// dash-be/src/modules/regions/services/regions.service.ts
+
+import { Injectable, Inject, Logger, OnModuleInit } from '@nestjs/common';
 import { Redis } from 'ioredis';
 import { ApprovedRegionRepository } from '../repositories/approved-region.repository';
 import { ApprovedRegionEntity } from '../entities/approved-region.entity';
 import { ExcelService } from './excel.service';
 import { ClusterMetricsService } from './cluster-metrics.service';
-import { ClusterMetricResponse, ClusterMetric } from '../../../common/interfaces/region.interface';
+import {
+  UnapprovedRegion,
+  AccountUnapprovedRegions,
+  ProfileCapacity,
+  ApprovedRegion,
+} from '../../../common/interfaces/region.interface';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AccountEntity } from '../../accounts/entities/account.entity';
 import { normalizeAccountName } from '../../../common/utils/account-normalizer.util';
-import { 
-  ApprovedRegion, 
-  UnapprovedRegion, 
-  AccountUnapprovedRegions,
-  ProfileCapacity 
-} from '../../../common/interfaces/region.interface';
+import { normalizeRegionName } from '../../../common/utils/region-normalizer.util';
+import { ClusterMetric, ClusterMetricResponse } from '../../../common/interfaces/region.interface';
 
 export interface AccountRegionData {
   accountName: string;
@@ -22,8 +25,8 @@ export interface AccountRegionData {
 }
 
 @Injectable()
-export class RegionsService {
-  private readonly logger = new Logger(RegionsService.name); 
+export class RegionsService implements OnModuleInit {
+  private readonly logger = new Logger(RegionsService.name);
 
   constructor(
     @InjectRepository(AccountEntity)
@@ -32,242 +35,174 @@ export class RegionsService {
     private readonly approvedRegionRepository: ApprovedRegionRepository,
     private readonly excelService: ExcelService,
     private readonly clusterMetricsService: ClusterMetricsService,
-    @Inject('REDIS_CLIENT') private readonly redisClient: Redis
+    @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
   ) {}
 
-  private calculateStatus(total: ProfileCapacity, current: ProfileCapacity): 'EXCEEDED' | 'AT_CAPACITY' | 'WITHIN_LIMIT' {
-    const totalSum = Object.values(total).reduce((sum: number, val: number) => sum + val, 0);
-    const currentSum = Object.values(current).reduce((sum: number, val: number) => sum + val, 0);
+  onModuleInit() {
+    this.initializeApprovedRegionData();
+  }
 
-    if (currentSum > totalSum) return 'EXCEEDED';
-    if (currentSum === totalSum) return 'AT_CAPACITY';
+  private async initializeApprovedRegionData(): Promise<void> {
+    const rows = await this.approvedRegionRepository.find();
+    if (rows.length === 0) {
+      this.logger.warn('Approved regions table empty—running initial sync');
+      await this.syncApprovedRegions();
+    }
+  }
+
+  private calculateStatus(
+    total: ProfileCapacity,
+    current: ProfileCapacity,
+  ): 'EXCEEDED' | 'AT_CAPACITY' | 'WITHIN_LIMIT' {
+    const totalSum = Object.values(total).reduce((s, v) => s + v, 0);
+    const currSum = Object.values(current).reduce((s, v) => s + v, 0);
+    if (currSum > totalSum) return 'EXCEEDED';
+    if (currSum === totalSum) return 'AT_CAPACITY';
     return 'WITHIN_LIMIT';
   }
-  
+
   async getRegionComparison(): Promise<AccountRegionData[]> {
-    console.log('Fetching region comparison data...');
     const cached = await this.redisClient.get('approved_regions');
     if (cached) return JSON.parse(cached);
-  
-    const [regions, clusterMetrics] = await Promise.all([
-      this.approvedRegionRepository.find({
-        relations: ['account']
-      }),
-      this.clusterMetricsService.getClusterMetrics()
+
+    const [regions, metrics] = await Promise.all([
+      this.approvedRegionRepository.find({ relations: ['account'] }),
+      this.clusterMetricsService.getClusterMetrics(),
     ]);
 
-    
-    const result = Object.entries(
-      regions.reduce((acc, region) => {
-        console.log('Processing region:', region.region);
-        console.log('Region account:', region.account);
-        if (!region.account) return acc;
-        
-        const accountName = region.account.name;
-        if (!acc[accountName]) acc[accountName] = [];
-        
-        const accountMetrics = clusterMetrics.find(m => m.accountName === accountName);
-        const regionClusters = accountMetrics ? 
-          accountMetrics.clusters.filter(c => c.region.includes(region.region)) : 
-          [];
-        
-        const current_capacity = this.calculateProfileTypeCounts(regionClusters);
-        
-        const available: ProfileCapacity = {
-          D: Math.max(0, region.total_capacity.D - current_capacity.D),
-          DHA: Math.max(0, region.total_capacity.DHA - current_capacity.DHA),
-          S: Math.max(0, region.total_capacity.S - current_capacity.S),
-          M: Math.max(0, region.total_capacity.M - current_capacity.M),
-          L: Math.max(0, region.total_capacity.L - current_capacity.L)
-        };
-        
-        const status = this.calculateStatus(region.total_capacity, current_capacity);
-        
-        acc[accountName].push({
-          region: region.region,
-          year: region.year,
-          approved_capacity: region.approved_capacity,
-          total_capacity: region.total_capacity,
-          current_capacity,
-          available,
-          status
+    const byAccount = regions.reduce(
+      (acc, regionRow) => {
+        if (!regionRow.account) return acc;
+        const acct = regionRow.account.name;
+        acc[acct] ??= [];
+
+        const accountMetrics = metrics.find(m => m.accountName === acct);
+        const regionKey = normalizeRegionName(regionRow.region);
+
+        // filter clusters by normalized region
+        const clusters = accountMetrics
+          ? accountMetrics.clusters.filter(c =>
+              normalizeRegionName(c.region) === regionKey,
+            )
+          : [];
+
+        // count profiles
+        const current: ProfileCapacity = { D: 0, DHA: 0, S: 0, M: 0, L: 0 };
+        clusters.forEach(c => {
+          current[c.profileType ?? 'D']++;
         });
+
+        const available: ProfileCapacity = {
+          D: Math.max(0, regionRow.total_capacity.D - current.D),
+          DHA: Math.max(0, regionRow.total_capacity.DHA - current.DHA),
+          S: Math.max(0, regionRow.total_capacity.S - current.S),
+          M: Math.max(0, regionRow.total_capacity.M - current.M),
+          L: Math.max(0, regionRow.total_capacity.L - current.L),
+        };
+
+        acc[acct].push({
+          region: regionRow.region,
+          year: regionRow.year,
+          approved_capacity: regionRow.approved_capacity,
+          total_capacity: regionRow.total_capacity,
+          current_capacity: current,
+          available,
+          status: this.calculateStatus(regionRow.total_capacity, current),
+        });
+
         return acc;
-      }, {} as Record<string, ApprovedRegion[]>)
-    ).map(([accountName, regions]) => ({
+      },
+      {} as Record<string, ApprovedRegion[]>,
+    );
+
+    const result = Object.entries(byAccount).map(([accountName, regions]) => ({
       accountName,
-      regions
+      regions,
     }));
-  
+
     await this.redisClient.set('approved_regions', JSON.stringify(result), 'EX', 3600);
     return result;
   }
-  
 
   async syncApprovedRegions(): Promise<void> {
-    try {
-      const excelData = await this.excelService.getApprovedRegions();
-      const validEntities: Partial<ApprovedRegionEntity>[] = [];
-  
-      for (const data of excelData) {
-        const normalizedName = normalizeAccountName(data.accountName);
-        const accountEntity = await this.accountRepository.findOne({
-          where: { name: normalizedName }
-        });
-      
-        this.logger.log(`Trying to find account for: ${data.accountName} (normalized: ${normalizedName})`);
-      
-        if (!accountEntity) continue;
-      
-        const totalCapacitySum = Object.values(data.total_capacity as ProfileCapacity)
-          .reduce((sum: number, val: number) => sum + val, 0);
-      
-        validEntities.push({
-          region: data.region as string,
-          year: data.year as string,
-          approved_capacity: totalCapacitySum,
-          total_capacity: data.total_capacity as ProfileCapacity,
-          current_capacity: data.current_capacity as ProfileCapacity,
-          available: data.available as ProfileCapacity,
-          status: this.calculateStatus(
-            data.total_capacity as ProfileCapacity,
-            data.current_capacity as ProfileCapacity
-          ),
-          account: accountEntity
-        });
-      }
-      
-  
-      if (validEntities.length > 0) {
-        await this.approvedRegionRepository.clear();
-        await this.approvedRegionRepository.save(validEntities);
-        await this.invalidateCache();
-      }
-    } catch (error) {
-      throw new Error(`Failed to sync approved regions: ${error.message}`);
-    }
-  }
-  
+    const excelData = await this.excelService.getApprovedRegions();
+    const toSave: Partial<ApprovedRegionEntity>[] = [];
 
-  private async invalidateCache(): Promise<void> {
-    await this.redisClient.del('approved_regions');
+    for (const d of excelData) {
+      const normName = normalizeAccountName(d.accountName);
+      const acct = await this.accountRepository.findOne({ where: { name: normName } });
+      if (!acct) continue;
+
+      const totalSum = Object.values(d.total_capacity).reduce((s, v) => s + v, 0);
+      toSave.push({
+        region: d.region,
+        year: d.year,
+        approved_capacity: totalSum,
+        total_capacity: d.total_capacity,
+        current_capacity: d.current_capacity,
+        available: d.available,
+        status: this.calculateStatus(d.total_capacity, d.current_capacity),
+        account: acct,
+      });
+    }
+
+    if (toSave.length) {
+      await this.approvedRegionRepository.clear();
+      await this.approvedRegionRepository.save(toSave);
+      await this.redisClient.del('approved_regions');
+    }
   }
 
   async getApprovedRegions(): Promise<ApprovedRegionEntity[]> {
     const cached = await this.redisClient.get('approved_regions');
     if (cached) return JSON.parse(cached);
-    
-    const regions = await this.approvedRegionRepository.find();
-    await this.redisClient.set('approved_regions', JSON.stringify(regions), 'EX', 3600);
-    return regions;
+    const rows = await this.approvedRegionRepository.find();
+    await this.redisClient.set('approved_regions', JSON.stringify(rows), 'EX', 3600);
+    return rows;
   }
 
   async getUnapprovedRegions(): Promise<AccountUnapprovedRegions[]> {
-    try {
-      const [approvedRegions, metricsResponse] = await Promise.all([
-        this.getApprovedRegions(),
-        this.clusterMetricsService.getClusterMetrics()
-      ]);
-  
-      return Object.entries(this.groupMetricsByAccount(metricsResponse))
-        .map(([accountName, metrics]) => {
-          try {
-            const unapprovedRegions = this.calculateUnapprovedRegions(
-              approvedRegions.filter(r => r.account?.name === accountName), 
-              metrics
-            );
-            
-            return {
-              accountName,
-              unapprovedRegions
-            };
-          } catch (error) {
-            this.logger.error(`Error processing unapproved regions for account ${accountName}:`, error);
-            return {
-              accountName,
-              unapprovedRegions: []
-            };
-          }
-        });
-    } catch (error) {
-      this.logger.error('Error in getUnapprovedRegions:', error);
-      return [];
-    }
-  }
-  private calculateProfileTypeCounts(clusters: ClusterMetric[]): ProfileCapacity {
-    const counts: ProfileCapacity = { D: 0, DHA: 0, S: 0, M: 0, L: 0 };
-    
-    clusters.forEach(cluster => {
-      if (cluster.profileType) {
-        counts[cluster.profileType]++;
-      } else {
-        counts.D++;
-      }
-    });
-    
-    return counts;
-  }
-    
+    const [approved, metrics] = await Promise.all([
+      this.getApprovedRegions(),
+      this.clusterMetricsService.getClusterMetrics(),
+    ]);
 
-  private groupMetricsByAccount(metricsResponse: ClusterMetricResponse[]): Record<string, ClusterMetric[]> {
-    return metricsResponse.reduce((acc, response) => {
-      acc[response.accountName] = response.clusters;
+    const byAccount = metrics.reduce((acc, resp) => {
+      acc[resp.accountName] = resp.clusters;
       return acc;
     }, {} as Record<string, ClusterMetric[]>);
-  }
 
-  private calculateUnapprovedRegions(
-    approvedRegions: ApprovedRegionEntity[],
-    metrics: ClusterMetric[]
-  ): UnapprovedRegion[] {
-    const approvedCapacities = approvedRegions.reduce((acc, region) => {
-      if (!acc[region.region]) {
-        acc[region.region] = { ...region.total_capacity };
-      } else {
-        Object.keys(region.total_capacity).forEach(profile => {
-          const p = profile as keyof ProfileCapacity;
-          acc[region.region][p] += region.total_capacity[p];
-        });
-      }
-      return acc;
-    }, {} as Record<string, ProfileCapacity>);
-  
-    const regionProfiles = metrics.reduce((acc, cluster) => {
-      const region = cluster.region.split(',')[0].trim();
-      
-      if (!acc[region]) {
-        acc[region] = { D: 0, DHA: 0, S: 0, M: 0, L: 0 };
-      }
-      
-      if (cluster.profileType) {
-        acc[region][cluster.profileType]++;
-      } else {
-        acc[region].D++;
-      }
-      
-      return acc;
-    }, {} as Record<string, ProfileCapacity>);
-  
-    const result: UnapprovedRegion[] = [];
-    
-    Object.entries(regionProfiles).forEach(([region, profileCount]) => {
-      const approvedCapacity = approvedCapacities[region] || { D: 0, DHA: 0, S: 0, M: 0, L: 0 };
-      
-      Object.entries(profileCount).forEach(([profile, count]) => {
-        const p = profile as keyof ProfileCapacity;
-        const excess = count - (approvedCapacity[p] || 0);
-        
-        if (excess > 0) {
-          result.push({
-            region,
-            capacity: excess,
-            profile: p
+    return Object.entries(byAccount).map(([acct, clusters]) => {
+      // sum approved per normalized region
+      const approvedCap: Record<string, ProfileCapacity> = {};
+      approved
+        .filter(r => r.account?.name === acct)
+        .forEach(r => {
+          const key = normalizeRegionName(r.region);
+          approvedCap[key] ??= { D: 0, DHA: 0, S: 0, M: 0, L: 0 };
+          (Object.keys(r.total_capacity) as Array<keyof ProfileCapacity>).forEach(p => {
+            approvedCap[key][p] += r.total_capacity[p];
           });
-        }
+        });
+
+      // count actual clusters per normalized region
+      const actual: Record<string, ProfileCapacity> = {};
+      clusters.forEach(c => {
+        const key = normalizeRegionName(c.region);
+        actual[key] ??= { D: 0, DHA: 0, S: 0, M: 0, L: 0 };
+        actual[key][c.profileType ?? 'D']++;
       });
+
+      const unapproved: UnapprovedRegion[] = [];
+      Object.entries(actual).forEach(([key, profCount]) => {
+        const app = approvedCap[key] || { D: 0, DHA: 0, S: 0, M: 0, L: 0 };
+        (Object.keys(profCount) as Array<keyof ProfileCapacity>).forEach(p => {
+          const diff = profCount[p] - (app[p] || 0);
+          if (diff > 0) unapproved.push({ region: key, capacity: diff, profile: p });
+        });
+      });
+
+      return { accountName: acct, unapprovedRegions: unapproved };
     });
-    
-    return result;
   }
-  
 }

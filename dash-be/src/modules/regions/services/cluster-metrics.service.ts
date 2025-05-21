@@ -3,10 +3,11 @@ import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { SLUG_TO_REGION } from '../../../common/constants/region-mapping.constant';
 import { AccountsService } from '../../accounts/accounts.service';
-import { 
-  getMemorySizeFromInstanceType, 
-  determineProfileType 
+import {
+  getMemorySizeFromInstanceType,
+  determineProfileType,
 } from '../../../common/constants/instance-type-mapping.constant';
+import { normalizeRegionName } from '../../../common/utils/region-normalizer.util';
 
 export interface ClusterPoolNode {
   id: string;
@@ -42,100 +43,79 @@ export class ClusterMetricsService {
 
   constructor(
     private readonly httpService: HttpService,
-    private readonly accountsService: AccountsService
+    private readonly accountsService: AccountsService,
   ) {}
+
   private determineProfileType(pools: ClusterPool[]): 'D' | 'DHA' | 'S' | 'M' | 'L' {
-    const totalNodeCount = pools.reduce((sum, pool) => sum + pool.count, 0);
-    
-    this.logger.debug(`Determining profile type for pools with total node count: ${totalNodeCount}`);
-    
-    pools.forEach(pool => {
-      this.logger.debug(`Pool: type=${pool.type}, count=${pool.count}`);
-    });
-    
-    const poolMemorySizes = pools.map(pool => getMemorySizeFromInstanceType(pool.type));
-  
-    this.logger.debug(`Pool memory sizes: ${poolMemorySizes.join(', ')}`);
-    
-    const largestMemorySize = Math.max(...poolMemorySizes, 0);
-    
-    return determineProfileType(largestMemorySize, totalNodeCount);
+    const total = pools.reduce((s, p) => s + p.count, 0);
+    this.logger.debug(`Total nodes: ${total}`);
+    const sizes = pools.map(p => getMemorySizeFromInstanceType(p.type));
+    this.logger.debug(`Pool mem sizes: ${sizes.join(', ')}`);
+    const maxSize = Math.max(...sizes, 0);
+    return determineProfileType(maxSize, total);
   }
 
   async getClusterMetrics(): Promise<ClusterMetricResponse[]> {
-    try {
-      const accounts = await this.accountsService.getAccounts();
-      
-      const clustersByAccount = await Promise.all(
-        accounts.map(async (account) => {
-          try {
-            const clustersResponse = await firstValueFrom(
-              this.httpService.get(this.linodeApiUrl, {
-                headers: {
-                  Authorization: `Bearer ${account.token}`,
-                },
-              })
-            );
-            
-            const clustersWithDetails = await Promise.all(
-              clustersResponse.data.data.map(async (cluster: any) => {
-                try {
-                  const poolsResponse = await firstValueFrom(
-                    this.httpService.get(`${this.linodeApiUrl}/${cluster.id}/pools`, {
-                      headers: {
-                        Authorization: `Bearer ${account.token}`,
-                      },
-                    })
-                  );
-                  
-                  const pools = poolsResponse.data.data;
-                  const totalNodeCount = pools.reduce((sum: number, pool: any) => sum + pool.count, 0);
-                  const profileType = this.determineProfileType(pools);
-                  
-                  return {
-                    name: cluster.label,
-                    region: SLUG_TO_REGION[cluster.region] || cluster.region,
-                    status: cluster.status,
-                    created: cluster.created,
-                    id: cluster.id,
-                    pools,
-                    totalNodeCount,
-                    profileType
-                  };
-                } catch (error) {
-                  this.logger.error(`Error fetching pools for cluster ${cluster.id}:`, error);
-                  return {
-                    name: cluster.label,
-                    region: SLUG_TO_REGION[cluster.region] || cluster.region,
-                    status: cluster.status,
-                    created: cluster.created,
-                    id: cluster.id,
-                    pools: [],
-                    totalNodeCount: 0,
-                    profileType: 'D' 
-                  };
-                }
-              })
-            );
+    const accounts = await this.accountsService.getAccounts();
 
-            return {
-              accountName: account.name,
-              clusters: clustersWithDetails
-            };
-          } catch (error) {
-            this.logger.error(`Error fetching clusters for account ${account.name}:`, error);
-            return {
-              accountName: account.name,
-              clusters: []
-            };
-          }
-        })
-      );
+    return Promise.all(
+      accounts.map(async acct => {
+        try {
+          const listRes = await firstValueFrom(
+            this.httpService.get(this.linodeApiUrl, {
+              headers: { Authorization: `Bearer ${acct.token}` },
+            }),
+          );
 
-      return clustersByAccount;
-    } catch (error) {
-      this.logger.error('Error fetching cluster metrics:', error);
-      throw error;
-    }
+          const clusters = await Promise.all(
+            listRes.data.data.map(async (c: any) => {
+              try {
+                const poolsRes = await firstValueFrom(
+                  this.httpService.get(
+                    `${this.linodeApiUrl}/${c.id}/pools`,
+                    { headers: { Authorization: `Bearer ${acct.token}` } },
+                  ),
+                );
+                const pools: ClusterPool[] = poolsRes.data.data;
+                const totalNodes = pools.reduce((s, p) => s + p.count, 0);
+                const prof = this.determineProfileType(pools);
+
+                return {
+                  name: c.label,
+                  region: normalizeRegionName(
+                    SLUG_TO_REGION[c.region] || c.region,
+                  ),
+                  status: c.status,
+                  created: c.created,
+                  id: c.id,
+                  pools,
+                  totalNodeCount: totalNodes,
+                  profileType: prof,
+                };
+              } catch (err) {
+                this.logger.error(`Pools error for ${c.id}:`, err);
+                return {
+                  name: c.label,
+                  region: normalizeRegionName(
+                    SLUG_TO_REGION[c.region] || c.region,
+                  ),
+                  status: c.status,
+                  created: c.created,
+                  id: c.id,
+                  pools: [],
+                  totalNodeCount: 0,
+                  profileType: 'D',
+                };
+              }
+            }),
+          );
+
+          return { accountName: acct.name, clusters };
+        } catch (err) {
+          this.logger.error(`Clusters error for ${acct.name}:`, err);
+          return { accountName: acct.name, clusters: [] };
+        }
+      }),
+    );
   }
 }
