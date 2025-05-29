@@ -1,5 +1,3 @@
-// dash-be/src/modules/regions/services/regions.service.ts
-
 import { Injectable, Inject, Logger, OnModuleInit } from '@nestjs/common';
 import { Redis } from 'ioredis';
 import { ApprovedRegionRepository } from '../repositories/approved-region.repository';
@@ -17,7 +15,7 @@ import { Repository } from 'typeorm';
 import { AccountEntity } from '../../accounts/entities/account.entity';
 import { normalizeAccountName } from '../../../common/utils/account-normalizer.util';
 import { normalizeRegionName } from '../../../common/utils/region-normalizer.util';
-import { ClusterMetric, ClusterMetricResponse } from '../../../common/interfaces/region.interface';
+import { ClusterMetric} from '../../../common/interfaces/region.interface';
 
 export interface AccountRegionData {
   accountName: string;
@@ -43,11 +41,8 @@ export class RegionsService implements OnModuleInit {
   }
 
   private async initializeApprovedRegionData(): Promise<void> {
-    const rows = await this.approvedRegionRepository.find();
-    if (rows.length === 0) {
-      this.logger.warn('Approved regions table empty—running initial sync');
-      await this.syncApprovedRegions();
-    }
+    this.logger.warn('init sync for approved regions');
+    await this.syncApprovedRegions();
   }
 
   private calculateStatus(
@@ -79,14 +74,14 @@ export class RegionsService implements OnModuleInit {
         const accountMetrics = metrics.find(m => m.accountName === acct);
         const regionKey = normalizeRegionName(regionRow.region);
 
-        // filter clusters by normalized region
+
         const clusters = accountMetrics
           ? accountMetrics.clusters.filter(c =>
               normalizeRegionName(c.region) === regionKey,
             )
           : [];
 
-        // count profiles
+
         const current: ProfileCapacity = { D: 0, DHA: 0, S: 0, M: 0, L: 0 };
         clusters.forEach(c => {
           current[c.profileType ?? 'D']++;
@@ -173,7 +168,7 @@ export class RegionsService implements OnModuleInit {
     }, {} as Record<string, ClusterMetric[]>);
 
     return Object.entries(byAccount).map(([acct, clusters]) => {
-      // sum approved per normalized region
+
       const approvedCap: Record<string, ProfileCapacity> = {};
       approved
         .filter(r => r.account?.name === acct)
@@ -185,7 +180,7 @@ export class RegionsService implements OnModuleInit {
           });
         });
 
-      // count actual clusters per normalized region
+
       const actual: Record<string, ProfileCapacity> = {};
       clusters.forEach(c => {
         const key = normalizeRegionName(c.region);
