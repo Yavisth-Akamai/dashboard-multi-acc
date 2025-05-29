@@ -6,7 +6,6 @@ const REGION_SUFFIX_WORDS = [
   'brazil','india','germany','japan','australia','canada','france','netherlands','sweden','italy','spain'
 ];
 
-// Regex to trim standalone trailing suffix words (e.g. ", NJ", "Brazil")
 const REGION_SUFFIX_REGEX = new RegExp(`[\\s,._-]*\\b(${REGION_SUFFIX_WORDS.join('|')})\\b\\s*$`, 'i');
 
 export function normalizeRegionName(raw: string): string {
