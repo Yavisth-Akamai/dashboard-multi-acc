@@ -1,9 +1,13 @@
 import axios from 'axios';
-import { Account, AccountUnapprovedRegions,ClusterMetricResponse, AccountComparisonData, AuthResponse
+import {
+  Account,
+  AccountUnapprovedRegions,
+  ClusterMetricResponse,
+  AccountComparisonData,
+  AuthResponse,  
 } from '../types/account.types';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3000';
-
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -11,7 +15,7 @@ export const apiClient = axios.create({
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
-  }
+  },
 });
 
 export const fetchAccounts = async (): Promise<Account[]> => {
@@ -23,6 +27,7 @@ export const fetchAccounts = async (): Promise<Account[]> => {
     return [];
   }
 };
+
 export const fetchClusterMetrics = async (): Promise<ClusterMetricResponse[]> => {
   try {
     const response = await apiClient.get('/regions/metrics');
@@ -32,7 +37,6 @@ export const fetchClusterMetrics = async (): Promise<ClusterMetricResponse[]> =>
     return [];
   }
 };
-
 
 export const fetchApprovedComparison = async (): Promise<AccountComparisonData[]> => {
   try {
@@ -56,9 +60,13 @@ export const fetchUnapprovedRegions = async (): Promise<AccountUnapprovedRegions
   }
 };
 
-export const login = async (email: string, password: string): Promise<AuthResponse> => {
+
+export const login = async (
+  User: string,
+  password: string
+): Promise<AuthResponse> => {
   try {
-    const response = await apiClient.post('/auth/login', { email, password });
+    const response = await apiClient.post<AuthResponse>('/auth/login', { User, password });
     return response.data;
   } catch (error) {
     console.error('Error logging in:', error);
@@ -66,9 +74,27 @@ export const login = async (email: string, password: string): Promise<AuthRespon
   }
 };
 
-export const signup = async (email: string, password: string): Promise<void> => {
+
+export const changePassword = async (
+  User: string,
+  currentPassword: string,
+  newPassword: string
+): Promise<{ message: string }> => {
   try {
-    await apiClient.post('/auth/signup', { email, password });
+    const response = await apiClient.post<{ message: string }>('/auth/change-password', {
+      User,
+      newPassword,
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error changing password:', error);
+    throw error;
+  }
+};
+
+export const signup = async (User: string, password: string): Promise<void> => {
+  try {
+    await apiClient.post('/auth/signup', { User, password });
   } catch (error) {
     console.error('Error signing up:', error);
     throw error;

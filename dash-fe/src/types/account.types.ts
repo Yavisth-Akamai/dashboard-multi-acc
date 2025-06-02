@@ -5,9 +5,6 @@ export interface ProfileCapacity {
   M: number;
   L: number;
 }
-export interface AuthResponse {
-  token: string;
-}
 
 export interface ApprovedRegion {
   region: string;
@@ -32,6 +29,11 @@ export interface ClusterMetric {
 export interface AccountComparisonData {
   accountName: string;
   regions: ComparisonData[];
+}
+
+export interface AuthResponse {
+  token?: string;              
+  needsPasswordChange: boolean; 
 }
 
 export interface AccountData {

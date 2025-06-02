@@ -7,7 +7,7 @@ import { AccountEntity } from './entities/account.entity';
 import { normalizeAccountName } from '../../common/utils/account-normalizer.util';
 
 interface LinodeAccountInfo {
-  email: string;
+  User: string;
   company?: string;
   first_name?: string;
   last_name?: string;
@@ -15,7 +15,7 @@ interface LinodeAccountInfo {
 
 interface LinodeProfileInfo {
   username: string;
-  email: string;
+  User: string;
 }
 
 @Injectable()

@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ConflictException, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserEntity } from './auth.entity';
@@ -13,19 +13,8 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-//   async signup(email: string, password: string): Promise<void> {
-//     const existingUser = await this.userRepository.findOne({ where: { email } });
-//     if (existingUser) {
-//       throw new ConflictException('User already exists');
-//     }
-
-//     const passwordHash = await bcrypt.hash(password, 10);
-//     const user = this.userRepository.create({ email, passwordHash });
-//     await this.userRepository.save(user);
-//   }
-
-  async login(email: string, password: string): Promise<{ token: string }> {
-    const user = await this.userRepository.findOne({ where: { email } });
+  async login(User: string, password: string): Promise<{ token?: string; needsPasswordChange: boolean }> {
+    const user = await this.userRepository.findOne({ where: { User } });
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -35,10 +24,37 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    if (user.needsPasswordChange) {
+      return { needsPasswordChange: true };
+    }
+
+
     const token = this.jwtService.sign(
-        { id: user.id, email: user.email },
-        { expiresIn: '30m' },
+      { id: user.id, User: user.User },
+      { expiresIn: '30m' },
     );
-    return { token };
+
+    return {
+      token,
+      needsPasswordChange: false,
+    };
+  }
+
+  async changePassword(User: string, newPassword: string): Promise<{ message: string }> {
+    const user = await this.userRepository.findOne({ where: { User } });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    if (!user.needsPasswordChange) {
+      throw new BadRequestException('Password already changed');
+    }
+
+    const newHash = await bcrypt.hash(newPassword, 10);
+    user.passwordHash = newHash;
+    user.needsPasswordChange = false;
+    await this.userRepository.save(user);
+
+    return { message: 'Password changed successfully' };
   }
 }
