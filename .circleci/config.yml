@@ -14,9 +14,14 @@ jobs:
       - run:
           name: Build & push BE
           command: |
+            if [ "${CIRCLE_BRANCH}" = "main" ] && [ -n "$CIRCLE_TAG" ]; then
+              TAG=$CIRCLE_TAG
+            else
+              TAG=ci-${CIRCLE_SHA1:0:7}
+            fi
             docker buildx build --platform=linux/amd64 --no-cache \
-              -t $ACR_URL/$ACR_USERNAME/dash-be:v0.0.3 \
-              ./dash-be --push
+              -t $ACR_HOST/$ACR_USER/dash-be:$TAG \
+              --push ./dash-be
 
   build-frontend:
     docker:
@@ -31,16 +36,40 @@ jobs:
       - run:
           name: Build & push FE
           command: |
+            if [ "${CIRCLE_BRANCH}" = "main" ] && [ -n "$CIRCLE_TAG" ]; then
+              TAG=$CIRCLE_TAG
+            else
+              TAG=ci-${CIRCLE_SHA1:0:7}
+            fi
             docker buildx build --platform=linux/amd64 --no-cache \
               --build-arg REACT_APP_API_BASE_URL=/api \
-              -t $ACR_URL/$ACR_USERNAME/dash-fe:v0.0.3 \
-              ./dash-fe --push
+              -t $ACR_HOST/$ACR_USER/dash-fe:$TAG \
+              --push ./dash-fe
 
 workflows:
   build-and-push:
     jobs:
       - build-backend:
           context: [registry]
+          filters:
+            branches:
+              only: dev
       - build-frontend:
           requires: [build-backend]
           context: [registry]
+          filters:
+            branches:
+              only: dev
+  
+  deploy-to-prod:
+    jobs:
+      - hold-for-approval:
+          type: approval
+      - build-backend:
+          context: [registry]
+          requires: [ hold-for-approval ]
+          filters: { branches: { only: main } }
+      - build-frontend:
+          context: [ registry ]
+          requires: [ build-backend ]
+          filters: { branches: { only: main } }
