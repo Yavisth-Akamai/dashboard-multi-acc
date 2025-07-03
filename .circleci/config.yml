@@ -71,14 +71,3 @@ workflows:
       - deploy-dev:
           requires: [ build-frontend ]
           filters: { branches: { only: dev } }
-# workflows:
-#   build-and-deploy-dev:
-#     jobs:
-#       - build-backend:
-#           filters: { branches: { only: dev } }
-#       - build-frontend:
-#           requires: [ build-backend ]
-#           filters: { branches: { only: dev } }
-#       - deploy-dev:
-#           requires: [ build-frontend ]
-#           filters: { branches: { only: dev } }
