@@ -8,17 +8,15 @@ jobs:
       - checkout
       - setup_remote_docker
       - run:
-          name: Login to ACR
+          name: Docker login to ACR
           command: |
-            docker login -u $ACR_USERNAME -p $ACR_PASSWORD $ACR_URL
+            docker login -u $ACR_USER -p $ACR_PASSWORD $ACR_HOST
       - run:
           name: Build & push BE
           command: |
-            TAG=ci-${CIRCLE_SHA1:0:7}
-            docker buildx build --platform linux/amd64 \
-              -t $ACR_URL/dash-be:$TAG \
-              --push ./dash-be
-
+            docker buildx build --platform=linux/amd64 --no-cache \
+              -t $ACR_HOST/$ACR_USER/dash-be:v0.0.3 \
+              ./dash-be --push
 
   build-frontend:
     docker:
@@ -27,23 +25,20 @@ jobs:
       - checkout
       - setup_remote_docker
       - run:
-          name: Login to ACR
+          name: Docker login to ACR
           command: |
-            docker login -u $ACR_USERNAME -p $ACR_PASSWORD $ACR_URL
+            docker login -u $ACR_USER -p $ACR_PASSWORD $ACR_HOST
       - run:
           name: Build & push FE
           command: |
-            TAG=ci-${CIRCLE_SHA1:0:7}
-            docker buildx build --platform linux/amd64 \
+            docker buildx build --platform=linux/amd64 --no-cache \
               --build-arg REACT_APP_API_BASE_URL=/api \
-              -t $ACR_URL/dash-fe:$TAG \
-              --push ./dash-fe
-
+              -t $ACR_HOST/$ACR_USER/dash-fe:v0.0.3 \
+              ./dash-fe --push
 
 workflows:
-  build-and-deploy-dev:
+  build-and-push:
     jobs:
       - build-backend
       - build-frontend:
-          requires: 
-            - build-backend
+          requires: [build-backend]
