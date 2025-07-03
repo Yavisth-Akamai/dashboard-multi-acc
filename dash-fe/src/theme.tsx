@@ -1,46 +1,42 @@
-import { createTheme } from '@mui/material/styles';
+import { createTheme, responsiveFontSizes } from '@mui/material/styles';
 
-const theme = createTheme({
+const baseTheme = (mode: 'light' | 'dark') => createTheme({
   palette: {
-    mode: 'dark',
-    background: {
-      default: '#121212',
-      paper: '#1e1e1e',
-    },
+    mode,
     primary: {
-      main: '#64b5f6',
+      main: mode === 'light' ? '#0d47a1' : '#90caf9',
     },
     secondary: {
-      main: '#ff4081',
+      main: mode === 'light' ? '#f50057' : '#f48fb1',
     },
-    text: {
-      primary: '#ffffff',
-      secondary: '#aaaaaa',
+    background: {
+      default: mode === 'light' ? '#fafafa' : '#121212',
+      paper: mode === 'light' ? '#fff' : '#1e1e1e',
     },
   },
   typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+    fontFamily: ['"Inter"', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'].join(','),
     fontSize: 13,
+    h6: {
+      fontWeight: 600,
+    }
   },
   components: {
-    MuiTableRow: {
-      styleOverrides: {
-        root: {
-          transition: 'background-color 0.2s ease',
-          '&:hover': {
-            backgroundColor: '#2a2a2a',
-          },
-        },
-      },
-    },
     MuiTableCell: {
       styleOverrides: {
         root: {
-          borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
+          padding: '6px 12px',
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
         },
       },
     },
   },
 });
 
-export default theme;
+export const getTheme = (mode: 'light' | 'dark') => responsiveFontSizes(baseTheme(mode));

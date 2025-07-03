@@ -1,0 +1,10 @@
+
+init/account_mapping.txt
+init/init-job.sh
+
+*.secret.yaml
+*.env
+*.secrets
+
+*.log
+.DS_Store

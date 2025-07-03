@@ -17,7 +17,7 @@ import { AuthModule } from './modules/auth/auth.module';
       port: parseInt(process.env.DB_PORT || '5432'),
       username: process.env.POSTGRES_USER || 'yav',
       password: process.env.POSTGRES_PASSWORD || 'yav123',
-      database: process.env.POSTGRES_DB || 'regions_capacity',
+      database: process.env.POSTGRES_DB || 'region_capacity',
       autoLoadEntities: true,
       synchronize: true,
       entities: [__dirname + '/**/*.entity.{ts,js}'],

@@ -6,12 +6,14 @@ export class UserEntity {
   id: number;
 
   @Column({ unique: true })
-  email: string;
+  User: string;
 
   @Column()
   passwordHash: string;
 
+  @Column({ default: true })
+  needsPasswordChange: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 }
-

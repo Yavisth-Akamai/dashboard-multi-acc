@@ -1,5 +1,3 @@
-
-
 export interface InstanceTypeMapping {
   id: string;
   memorySizeGB: number;

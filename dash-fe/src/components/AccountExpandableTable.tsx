@@ -11,7 +11,6 @@ import ApprovedRegionsTable from './ApprovedRegionsTable';
 import UnapprovedRegionsTable from './UnapprovedRegionsTable';
 import ClusterMetricsTable from './ClusterMetricsTable';
 import { AccountData } from '../types/account.types';
-import { formatAccountName } from '../utils/formatters';
 
 interface AccountExpandableTableProps {
   accounts: AccountData[];

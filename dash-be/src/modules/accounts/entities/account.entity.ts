@@ -15,7 +15,7 @@ export class AccountEntity {
   isActive: boolean;
 
   @Column({ nullable: true })
-  email: string;
+  User: string;
 
   @CreateDateColumn()
   created_at: Date;

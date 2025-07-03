@@ -23,6 +23,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-package-lock.json
-
 .vscode/
+lc.dash.akacloudms.com.key
+lc.dash.akacloudms.com.crt
+dump-k8s.sh
+hash.js
+package.json

@@ -15,19 +15,15 @@ export class AccountsController {
   constructor(private readonly accountsService: AccountsService) {}
 
   @Post()
-  async addAccount(@Body() data: { token: string }) {
-    try {
-      return await this.accountsService.addAccount(data.token);
-    } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new HttpException(
-        'Failed to add account',
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
-    }
+  async addAccount(
+    @Body() data: { token: string; name?: string }
+  ) {
+    return await this.accountsService.addAccount(
+      data.token,
+      data.name?.trim()
+    );
   }
+
   @Get()
   async getAccounts() {
     return this.accountsService.getAccounts();
