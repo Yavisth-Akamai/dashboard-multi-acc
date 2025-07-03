@@ -65,6 +65,9 @@ workflows:
     jobs:
       - hold-for-approval:
           type: approval
+          filters:
+            branches:
+              only: main
       - build-backend:
           context: [registry]
           requires: [ hold-for-approval ]
