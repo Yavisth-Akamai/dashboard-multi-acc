@@ -39,6 +39,8 @@ jobs:
 workflows:
   build-and-push:
     jobs:
-      - build-backend
+      - build-backend:
+          context: [registry]
       - build-frontend:
           requires: [build-backend]
+          context: [registry]
