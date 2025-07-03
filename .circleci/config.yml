@@ -10,12 +10,12 @@ jobs:
       - run:
           name: Docker login to ACR
           command: |
-            docker login -u $ACR_USER -p $ACR_PASSWORD $ACR_HOST
+            docker login -u $ACR_USER -p $ACR_PASSWORD $ACR_URL
       - run:
           name: Build & push BE
           command: |
             docker buildx build --platform=linux/amd64 --no-cache \
-              -t $ACR_HOST/$ACR_USER/dash-be:v0.0.3 \
+              -t $ACR_URL/$ACR_USER/dash-be:v0.0.3 \
               ./dash-be --push
 
   build-frontend:
@@ -27,13 +27,13 @@ jobs:
       - run:
           name: Docker login to ACR
           command: |
-            docker login -u $ACR_USER -p $ACR_PASSWORD $ACR_HOST
+            docker login -u $ACR_USER -p $ACR_PASSWORD $ACR_URL
       - run:
           name: Build & push FE
           command: |
             docker buildx build --platform=linux/amd64 --no-cache \
               --build-arg REACT_APP_API_BASE_URL=/api \
-              -t $ACR_HOST/$ACR_USER/dash-fe:v0.0.3 \
+              -t $ACR_URL/$ACR_USER/dash-fe:v0.0.3 \
               ./dash-fe --push
 
 workflows:
