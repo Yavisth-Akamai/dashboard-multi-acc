@@ -20,7 +20,7 @@ jobs:
               TAG=ci-${CIRCLE_SHA1:0:7}
             fi
             docker buildx build --platform=linux/amd64 --no-cache \
-              -t $ACR_HOST/$ACR_USER/dash-be:$TAG \
+              -t $ACR_URL/$ACR_USERNAME/dash-be:$TAG \
               --push ./dash-be
 
   build-frontend:
@@ -43,7 +43,7 @@ jobs:
             fi
             docker buildx build --platform=linux/amd64 --no-cache \
               --build-arg REACT_APP_API_BASE_URL=/api \
-              -t $ACR_HOST/$ACR_USER/dash-fe:$TAG \
+              -t $ACR_URL/$ACR_USERNAME/dash-fe:$TAG \
               --push ./dash-fe
 
 workflows:
@@ -65,6 +65,9 @@ workflows:
     jobs:
       - hold-for-approval:
           type: approval
+          filters:
+            branches:
+              only: main
       - build-backend:
           context: [registry]
           requires: [ hold-for-approval ]
