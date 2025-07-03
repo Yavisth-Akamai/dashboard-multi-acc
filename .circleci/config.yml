@@ -3,22 +3,17 @@ version: 2.1
 orbs:
   kubernetes: circleci/kubernetes@2.0.0
 
-executors:
-  docker-executor:
-    docker:
-      - image: cimg/base:stable
-        auth:
-          username: $ACR_USERNAME
-          password: $ACR_PASSWORD
-
 jobs:
   build-backend:
-    executor: docker-executor 
     docker:
       - image: cimg/base:stable
     steps:
       - checkout
       - setup_remote_docker
+      - run:
+          name: Login to ACR
+          command: |
+            docker login -u $ACR_USERNAME -p $ACR_PASSWORD $ACR_URL
       - run:
           name: Build & push BE
           command: |
@@ -29,12 +24,15 @@ jobs:
 
 
   build-frontend:
-    executor: docker-executor
     docker:
       - image: cimg/base:stable
     steps:
       - checkout
       - setup_remote_docker
+      - run:
+          name: Login to ACR
+          command: |
+            docker login -u $ACR_USERNAME -p $ACR_PASSWORD $ACR_URL
       - run:
           name: Build & push FE
           command: |
