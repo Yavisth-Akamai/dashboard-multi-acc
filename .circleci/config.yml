@@ -68,8 +68,12 @@ workflows:
       - build-backend:
           context: [registry]
           requires: [ hold-for-approval ]
-          filters: { branches: { only: main } }
+          filters:
+            branches:
+              only: dev
       - build-frontend:
           context: [ registry ]
           requires: [ build-backend ]
-          filters: { branches: { only: main } }
+          filters:
+            branches:
+              only: dev
