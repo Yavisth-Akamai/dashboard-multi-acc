@@ -3,17 +3,22 @@ version: 2.1
 orbs:
   kubernetes: circleci/kubernetes@2.0.0
 
+executors:
+  docker-executor:
+    docker:
+      - image: cimg/base:stable
+        auth:
+          username: $ACR_USERNAME
+          password: $ACR_PASSWORD
+
 jobs:
   build-backend:
+    executor: docker-executor 
     docker:
       - image: cimg/base:stable
     steps:
       - checkout
       - setup_remote_docker
-      - run:
-          name: Docker login to ACR
-          command: |
-            docker login -u $ACR_USERNAME -p $ACR_PASSWORD $ACR_URL
       - run:
           name: Build & push BE
           command: |
@@ -24,15 +29,12 @@ jobs:
 
 
   build-frontend:
+    executor: docker-executor
     docker:
       - image: cimg/base:stable
     steps:
       - checkout
       - setup_remote_docker
-      - run:
-          name: Docker login to ACR
-          command: |
-            docker login -u $ACR_USERNAME -p $ACR_PASSWORD $ACR_URL
       - run:
           name: Build & push FE
           command: |
@@ -55,9 +57,7 @@ jobs:
         - kubernetes/install_kubectl
         - kubernetes/create_or_update_resource:
             resource_file_path: k8s/backend-deployment.yaml
-            action_type: apply
         - kubernetes/create_or_update_resource:
-            action_type: apply
             resource_file_path: k8s/frontend-deployment.yaml
 
 workflows:
