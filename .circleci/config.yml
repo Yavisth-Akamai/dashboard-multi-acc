@@ -2,7 +2,7 @@ version: 2.1
 
 orbs:
   docker: circleci/docker@2.8.2
-  kubernetes: circleci/kubernetes@1.4.0
+  kubernetes: circleci/kubernetes@2.0.0
 
 jobs:
   build-backend:
@@ -15,6 +15,7 @@ jobs:
           username: $ACR_USERNAME
           password: $ACR_PASSWORD
       - run:
+          name: Build & push BE
           command: |
             TAG=ci-${CIRCLE_SHA1:0:7}
             docker buildx build --platform linux/amd64 \
@@ -30,6 +31,7 @@ jobs:
           username: $ACR_USERNAME
           password: $ACR_PASSWORD
       - run:
+          name: Build & push FE
           command: |
             TAG=ci-${CIRCLE_SHA1:0:7}
             docker buildx build --platform linux/amd64 \
@@ -40,8 +42,9 @@ jobs:
     executor: kubernetes/default
     steps:
       - run:
+          name: Decode kubeconfig
           command: |
-            echo $KUBECONFIG_DEV_B64 | base64 -d > ~/.kube/config
+            echo $KUBECONFIG_DEV_B64 | base64 -d > /home/circleci/.kube/config
       - kubernetes/install-kubectl
       - kubernetes/exec:
           command: |
@@ -50,7 +53,7 @@ jobs:
             kubectl rollout status deployment/dash-fe
 
 workflows:
-  dev:
+  build-and-deploy-dev:
     jobs:
       - build-backend:
           filters: { branches: { only: dev } }
