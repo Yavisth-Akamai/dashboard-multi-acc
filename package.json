@@ -55,5 +55,18 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  }
+  },
+  "description": "",
+  "main": "hash.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Yavisth-Akamai/dashboard-multi-acc.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Yavisth-Akamai/dashboard-multi-acc/issues"
+  },
+  "homepage": "https://github.com/Yavisth-Akamai/dashboard-multi-acc#readme"
 }

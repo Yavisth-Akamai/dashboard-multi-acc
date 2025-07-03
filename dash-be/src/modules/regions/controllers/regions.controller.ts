@@ -1,16 +1,19 @@
-import { Controller, Get, Post } from '@nestjs/common';
+// File: dash-be/src/modules/regions/controllers/regions.controller.ts
+
+import { Controller, Get, Post, Logger } from '@nestjs/common';
 import { RegionsService } from '../services/regions.service';
-import { ClusterMetricsService } from '../services/cluster-metrics.service';
-import { AccountUnapprovedRegions } from '../../../common/interfaces/region.interface';
-import { ExcelService } from '../services/excel.service';
 import { AccountsService } from '../../accounts/accounts.service';
+import { ClusterMetricsService } from '../services/cluster-metrics.service';
+import { ExcelService } from '../services/excel.service';
+import { ApprovedRegionEntity } from '../entities/approved-region.entity';
+import { AccountUnapprovedRegions } from '../../../common/interfaces/region.interface';
 import * as XLSX from 'xlsx';
-import { Logger } from '@nestjs/common';
 import { HttpException, HttpStatus } from '@nestjs/common';
 
 @Controller('regions')
 export class RegionsController {
-  private readonly logger = new Logger(RegionsService.name); 
+  private readonly logger = new Logger(RegionsController.name);
+
   constructor(
     private readonly regionsService: RegionsService,
     private readonly accountsService: AccountsService,
@@ -27,7 +30,7 @@ export class RegionsController {
   async getAccounts() {
     return this.accountsService.getAccounts();
   }
-  
+
   @Get('test-excel')
   async testExcelReading() {
     return this.excelService.getApprovedRegions();
@@ -45,15 +48,14 @@ export class RegionsController {
   }
 
   @Get('approved')
-  async getApprovedRegions() {
-    return this.excelService.getApprovedRegions();
+  async getApprovedRegions(): Promise<ApprovedRegionEntity[]> {
+    return this.regionsService.getApprovedRegions();
   }
 
   @Get('metrics')
   async getClusterMetrics() {
     return this.clusterMetricsService.getClusterMetrics();
   }
-  
 
   @Get('unapproved')
   async getUnapprovedRegions(): Promise<AccountUnapprovedRegions[]> {
@@ -70,17 +72,15 @@ export class RegionsController {
     try {
       const workbook = XLSX.readFile('./approved_regions.xlsx', { cellStyles: true });
       const worksheet = workbook.Sheets[workbook.SheetNames[2]];
-      
-      const data = XLSX.utils.sheet_to_json(worksheet, { 
+      const data = XLSX.utils.sheet_to_json(worksheet, {
         header: 1,
         raw: false,
-        defval: null
+        defval: null,
       });
-      
       return {
         sheetNames: workbook.SheetNames,
         headers: data[0],
-        rows: data.slice(83, 92)
+        rows: data.slice(83, 92),
       };
     } catch (error) {
       this.logger.error('Error debugging Excel data:', error);
@@ -99,19 +99,19 @@ export class RegionsController {
       { memory: 'Dedicated 32 GB', nodes: '5', expected: 'L' },
       { memory: 'Dedicated 32 GB', nodes: '20', expected: 'L' },
     ];
-    
+
     const results = testCases.map(test => {
       const profile = this.excelService['determineProfileType'](test.memory, test.nodes);
       return {
         ...test,
         actual: profile,
-        correct: profile === test.expected
+        correct: profile === test.expected,
       };
     });
-  
-  return {
-    results,
-    allCorrect: results.every(r => r.correct)
-  };
-}
+
+    return {
+      results,
+      allCorrect: results.every(r => r.correct),
+    };
+  }
 }

@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dash-init-script
+data:
+  init-job.sh: |
+    #!/bin/sh
+    set -e
+
+    BACKEND="http://dash-be.default.svc.cluster.local:3000"
+
+    echo "Waiting for backend to be ready…"
+    until curl -s "${BACKEND}/regions/test-connection" | grep -q connected; do
+      echo "Still waiting…"
+      sleep 2
+    done
+
+    echo "Backend ready. Adding accounts…"
+    while IFS='=' read -r name token; do
+      if [ -n "$name" ] && [ -n "$token" ]; then
+        echo "Adding account: $name"
+        curl -s -X POST "${BACKEND}/accounts" \
+          -H "Content-Type: application/json" \
+          -d "{\"name\":\"$name\",\"token\":\"$token\"}"
+      fi
+    done < /secrets/account_mapping.txt
+
+    echo "Syncing regions…"
+    curl -s -X POST "${BACKEND}/regions/sync"
+
+    echo "Init job complete ✅"

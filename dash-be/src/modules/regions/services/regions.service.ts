@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Inject, Logger, OnModuleInit, OnApplicationBootstrap } from '@nestjs/common';
 import { Redis } from 'ioredis';
 import { ApprovedRegionRepository } from '../repositories/approved-region.repository';
 import { ApprovedRegionEntity } from '../entities/approved-region.entity';
@@ -9,13 +9,13 @@ import {
   AccountUnapprovedRegions,
   ProfileCapacity,
   ApprovedRegion,
+  ClusterMetric,
 } from '../../../common/interfaces/region.interface';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AccountEntity } from '../../accounts/entities/account.entity';
 import { normalizeAccountName } from '../../../common/utils/account-normalizer.util';
 import { normalizeRegionName } from '../../../common/utils/region-normalizer.util';
-import { ClusterMetric} from '../../../common/interfaces/region.interface';
 
 export interface AccountRegionData {
   accountName: string;
@@ -23,7 +23,7 @@ export interface AccountRegionData {
 }
 
 @Injectable()
-export class RegionsService implements OnModuleInit {
+export class RegionsService implements OnApplicationBootstrap {
   private readonly logger = new Logger(RegionsService.name);
 
   constructor(
@@ -36,7 +36,7 @@ export class RegionsService implements OnModuleInit {
     @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
   ) {}
 
-  onModuleInit() {
+  onApplicationBootstrap() {
     this.initializeApprovedRegionData();
   }
 
@@ -74,15 +74,13 @@ export class RegionsService implements OnModuleInit {
         const accountMetrics = metrics.find(m => m.accountName === acct);
         const regionKey = normalizeRegionName(regionRow.region);
 
-
+        const current: ProfileCapacity = { D: 0, DHA: 0, S: 0, M: 0, L: 0 };
         const clusters = accountMetrics
           ? accountMetrics.clusters.filter(c =>
               normalizeRegionName(c.region) === regionKey,
             )
           : [];
 
-
-        const current: ProfileCapacity = { D: 0, DHA: 0, S: 0, M: 0, L: 0 };
         clusters.forEach(c => {
           current[c.profileType ?? 'D']++;
         });
@@ -150,7 +148,16 @@ export class RegionsService implements OnModuleInit {
 
   async getApprovedRegions(): Promise<ApprovedRegionEntity[]> {
     const cached = await this.redisClient.get('approved_regions');
-    if (cached) return JSON.parse(cached);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
+    const count = await this.approvedRegionRepository.count();
+    if (count === 0) {
+      this.logger.warn('approved regions empty – running syncApprovedRegions() guard');
+      await this.syncApprovedRegions();
+    }
+
     const rows = await this.approvedRegionRepository.find();
     await this.redisClient.set('approved_regions', JSON.stringify(rows), 'EX', 3600);
     return rows;
@@ -168,7 +175,6 @@ export class RegionsService implements OnModuleInit {
     }, {} as Record<string, ClusterMetric[]>);
 
     return Object.entries(byAccount).map(([acct, clusters]) => {
-
       const approvedCap: Record<string, ProfileCapacity> = {};
       approved
         .filter(r => r.account?.name === acct)
@@ -179,7 +185,6 @@ export class RegionsService implements OnModuleInit {
             approvedCap[key][p] += r.total_capacity[p];
           });
         });
-
 
       const actual: Record<string, ProfileCapacity> = {};
       clusters.forEach(c => {
