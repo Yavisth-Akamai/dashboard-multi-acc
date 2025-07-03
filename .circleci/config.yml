@@ -70,10 +70,10 @@ workflows:
           requires: [ hold-for-approval ]
           filters:
             branches:
-              only: dev
+              only: main
       - build-frontend:
           context: [ registry ]
           requires: [ build-backend ]
           filters:
             branches:
-              only: dev
+              only: main
