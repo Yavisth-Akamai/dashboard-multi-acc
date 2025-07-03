@@ -1,7 +1,6 @@
 version: 2.1
 
 orbs:
-  docker: circleci/docker@2.8.2
   kubernetes: circleci/kubernetes@2.0.0
 
 jobs:
@@ -11,15 +10,18 @@ jobs:
     steps:
       - checkout
       - setup_remote_docker
-      - docker/login:
-          username: $ACR_USERNAME
-          password: $ACR_PASSWORD
+      - run:
+          name: Docker login to ACR
+          command: |
+            docker login -u $ACR_USERNAME -p $ACR_PASSWORD $ACR_URL
       - run:
           name: Build & push BE
           command: |
             TAG=ci-${CIRCLE_SHA1:0:7}
             docker buildx build --platform linux/amd64 \
-              -t $ACR_URL/dash-be:$TAG --push ./dash-be
+              -t $ACR_URL/dash-be:$TAG \
+              --push ./dash-be
+
 
   build-frontend:
     docker:
@@ -27,30 +29,37 @@ jobs:
     steps:
       - checkout
       - setup_remote_docker
-      - docker/login:
-          username: $ACR_USERNAME
-          password: $ACR_PASSWORD
+      - run:
+          name: Docker login to ACR
+          command: |
+            docker login -u $ACR_USERNAME -p $ACR_PASSWORD $ACR_URL
       - run:
           name: Build & push FE
           command: |
             TAG=ci-${CIRCLE_SHA1:0:7}
             docker buildx build --platform linux/amd64 \
               --build-arg REACT_APP_API_BASE_URL=/api \
-              -t $ACR_URL/dash-fe:$TAG --push ./dash-fe
+              -t $ACR_URL/dash-fe:$TAG \
+              --push ./dash-fe
+
 
   deploy-dev:
-    executor: kubernetes/default
-    steps:
-      - run:
-          name: Decode kubeconfig
-          command: |
-            echo $KUBECONFIG_DEV_B64 | base64 -d > /home/circleci/.kube/config
-      - kubernetes/install-kubectl
-      - kubernetes/exec:
-          command: |
-            kubectl apply -f k8s/
-            kubectl rollout status deployment/dash-be
-            kubectl rollout status deployment/dash-fe
+      docker:
+        - image: cimg/base:stable
+      steps:
+        - checkout
+        - run:
+            name: Decode kubeconfig
+            command: |
+              echo $KUBECONFIG_DEV_B64 | base64 -d > ~/.kube/config
+        - kubernetes/install_kubectl
+        - kubernetes/create_or_update_resource:
+            resource_file_path: k8s/backend-deployment.yaml
+            action_type: apply
+        - kubernetes/create_or_update_resource:
+            action_type: apply
+            resource_file_path: k8s/frontend-deployment.yaml
+
 
 workflows:
   build-and-deploy-dev:
