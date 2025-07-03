@@ -1,0 +1,62 @@
+version: 2.1
+
+orbs:
+  docker: circleci/docker@2.8.2
+  kubernetes: circleci/kubernetes@1.4.0
+
+jobs:
+  build-backend:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - setup_remote_docker
+      - docker/login:
+          username: $ACR_USERNAME
+          password: $ACR_PASSWORD
+      - run:
+          command: |
+            TAG=ci-${CIRCLE_SHA1:0:7}
+            docker buildx build --platform linux/amd64 \
+              -t $ACR_URL/dash-be:$TAG --push ./dash-be
+
+  build-frontend:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - setup_remote_docker
+      - docker/login:
+          username: $ACR_USERNAME
+          password: $ACR_PASSWORD
+      - run:
+          command: |
+            TAG=ci-${CIRCLE_SHA1:0:7}
+            docker buildx build --platform linux/amd64 \
+              --build-arg REACT_APP_API_BASE_URL=/api \
+              -t $ACR_URL/dash-fe:$TAG --push ./dash-fe
+
+  deploy-dev:
+    executor: kubernetes/default
+    steps:
+      - run:
+          command: |
+            echo $KUBECONFIG_DEV_B64 | base64 -d > ~/.kube/config
+      - kubernetes/install-kubectl
+      - kubernetes/exec:
+          command: |
+            kubectl apply -f k8s/
+            kubectl rollout status deployment/dash-be
+            kubectl rollout status deployment/dash-fe
+
+workflows:
+  dev:
+    jobs:
+      - build-backend:
+          filters: { branches: { only: dev } }
+      - build-frontend:
+          requires: [ build-backend ]
+          filters: { branches: { only: dev } }
+      - deploy-dev:
+          requires: [ build-frontend ]
+          filters: { branches: { only: dev } }
