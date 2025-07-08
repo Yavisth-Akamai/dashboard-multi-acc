@@ -14,11 +14,12 @@ jobs:
       - run:
           name: Build & push BE
           command: |
+            VERSION=$(cat VERSION)
             if [ "${CIRCLE_BRANCH}" = "main" ]; then
               DATE=$(date +'%d%m')
-              TAG="ci-${CIRCLE_SHA1:0:7}-${DATE}"
+              TAG="be-${VERSION}-${DATE}"
             else
-              TAG="ci-${CIRCLE_SHA1:0:7}"
+              TAG="be-${VERSION}"
             fi
             docker buildx build --platform=linux/amd64 --no-cache \
               -t $ACR_URL/$ACR_USERNAME/dash-be:$TAG \
@@ -37,11 +38,12 @@ jobs:
       - run:
           name: Build & push FE
           command: |
+            VERSION=$(cat VERSION)
             if [ "${CIRCLE_BRANCH}" = "main" ]; then
               DATE=$(date +'%d%m')
-              TAG="ci-${CIRCLE_SHA1:0:7}-${DATE}"
+              TAG="fe-${VERSION}-${DATE}"
             else
-              TAG="ci-${CIRCLE_SHA1:0:7}"
+              TAG="fe-${VERSION}"
             fi
             echo "export TAG=$TAG" >> $BASH_ENV
             docker buildx build --platform=linux/amd64 --no-cache \
@@ -50,7 +52,7 @@ jobs:
               --push ./dash-fe
 
 workflows:
-  build-and-push:
+  dev-push:
     jobs:
       - build-backend:
           context: [registry]
@@ -64,16 +66,10 @@ workflows:
             branches:
               only: dev
   
-  deploy-to-prod:
+  prod-push:
     jobs:
-      - hold-for-approval:
-          type: approval
-          filters:
-            branches:
-              only: main
       - build-backend:
           context: [registry]
-          requires: [ hold-for-approval ]
           filters:
             branches:
               only: main
