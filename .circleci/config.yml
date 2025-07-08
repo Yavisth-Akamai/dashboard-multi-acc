@@ -14,8 +14,8 @@ jobs:
       - run:
           name: Build & push BE
           command: |
+            VERSION=$(cat VERSION)
             if [ "${CIRCLE_BRANCH}" = "main" ]; then
-              VERSION=$(cat VERSION)
               DATE=$(date +'%d%m')
               TAG="be-${VERSION}-${DATE}"
             else
@@ -38,8 +38,8 @@ jobs:
       - run:
           name: Build & push FE
           command: |
+            VERSION=$(cat VERSION)
             if [ "${CIRCLE_BRANCH}" = "main" ]; then
-              VERSION=$(cat VERSION)
               DATE=$(date +'%d%m')
               TAG="fe-${VERSION}-${DATE}"
             else
